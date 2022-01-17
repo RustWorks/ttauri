@@ -14,18 +14,18 @@ widget_constraints const &radio_button_widget::set_constraints() noexcept
     _button_size = {theme().size, theme().size};
     ttlet extra_size = extent2{theme().margin + _button_size.width(), 0.0f};
     _constraints = max(set_constraints_button() + extra_size, _button_size);
-    _constraints.margin = theme().margin;
+    _constraints.margins = theme().margin;
     return _constraints;
 }
 
 void radio_button_widget::set_layout(widget_layout const &layout) noexcept
 {
     if (compare_store(_layout, layout)) {
-        _button_rectangle = align(layout.rectangle(), _button_size, alignment::top_left);
+        _button_rectangle = align(layout.rectangle(), _button_size, alignment::top_left());
 
         _label_rectangle = aarectangle{_button_rectangle.right() + theme().margin, 0.0f, layout.width(), layout.height()};
 
-        _pip_rectangle = align(_button_rectangle, extent2{theme().icon_size, theme().icon_size}, alignment::middle_center);
+        _pip_rectangle = align(_button_rectangle, extent2{theme().icon_size, theme().icon_size}, alignment::middle_center());
     }
     set_layout_button(layout);
 }

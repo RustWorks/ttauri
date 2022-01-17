@@ -20,7 +20,7 @@ widget_constraints const &menu_button_widget::set_constraints() noexcept
     // On left side a check mark, on right side short-cut. Around the label extra margin.
     ttlet extra_size = extent2{theme().margin * 4.0f + _check_size.width() + _short_cut_size.width(), theme().margin * 2.0f};
     _constraints = set_constraints_button() + extra_size;
-    _constraints.margin = 0.0f;
+    _constraints.margins = 0.0f;
     return _constraints;
 }
 
@@ -29,15 +29,15 @@ void menu_button_widget::set_layout(widget_layout const &layout) noexcept
     if (compare_store(_layout, layout)) {
         ttlet inside_rectangle = layout.rectangle() - theme().margin;
 
-        _check_rectangle = align(inside_rectangle, _check_size, alignment::middle_left);
-        _short_cut_rectangle = align(inside_rectangle, _short_cut_size, alignment::middle_right);
+        _check_rectangle = align(inside_rectangle, _check_size, alignment::middle_left());
+        _short_cut_rectangle = align(inside_rectangle, _short_cut_size, alignment::middle_right());
 
         _label_rectangle = aarectangle{
             _check_rectangle.right() + theme().margin, 0.0f, _short_cut_rectangle.left() - theme().margin, layout.height()};
 
         _check_glyph = font_book().find_glyph(elusive_icon::Ok);
         ttlet check_glyph_bb = _check_glyph.get_bounding_box();
-        _check_glyph_rectangle = align(_check_rectangle, check_glyph_bb * theme().icon_size, alignment::middle_center);
+        _check_glyph_rectangle = align(_check_rectangle, check_glyph_bb * theme().icon_size, alignment::middle_center());
     }
     set_layout_button(layout);
 }

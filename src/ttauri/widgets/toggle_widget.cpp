@@ -9,7 +9,7 @@ namespace tt::inline v1 {
 toggle_widget::toggle_widget(gui_window &window, widget *parent, weak_or_unique_ptr<delegate_type> delegate) noexcept :
     super(window, parent, std::move(delegate))
 {
-    label_alignment = alignment::top_left;
+    label_alignment = alignment::top_left();
 }
 
 toggle_widget::toggle_widget(gui_window &window, widget *parent, std::unique_ptr<delegate_type> delegate) noexcept :
@@ -25,21 +25,21 @@ widget_constraints const &toggle_widget::set_constraints() noexcept
     _button_size = {theme().size * 2.0f, theme().size};
     ttlet extra_size = extent2{theme().margin + _button_size.width(), 0.0f};
     _constraints = max(set_constraints_button() + extra_size, _button_size);
-    _constraints.margin = theme().margin;
+    _constraints.margins = theme().margin;
     return _constraints;
 }
 
 void toggle_widget::set_layout(widget_layout const &layout) noexcept
 {
     if (compare_store(_layout, layout)) {
-        _button_rectangle = align(layout.rectangle(), _button_size, alignment::top_left);
+        _button_rectangle = align(layout.rectangle(), _button_size, alignment::top_left());
 
         _label_rectangle = aarectangle{_button_rectangle.right() + theme().margin, 0.0f, layout.width(), layout.height()};
 
         ttlet button_square =
             aarectangle{get<0>(_button_rectangle), extent2{_button_rectangle.height(), _button_rectangle.height()}};
 
-        _pip_rectangle = align(button_square, extent2{theme().icon_size, theme().icon_size}, alignment::middle_center);
+        _pip_rectangle = align(button_square, extent2{theme().icon_size, theme().icon_size}, alignment::middle_center());
 
         ttlet pip_to_button_margin_x2 = _button_rectangle.height() - _pip_rectangle.height();
         _pip_move_range = _button_rectangle.width() - _pip_rectangle.width() - pip_to_button_margin_x2;

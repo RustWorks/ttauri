@@ -35,7 +35,7 @@ public:
         _constraints.minimum = label_constraints.minimum;
         _constraints.preferred = label_constraints.preferred + theme().margin;
         _constraints.maximum = label_constraints.maximum + tt::extent2{100.0f, 50.0f};
-        _constraints.margin = theme().margin;
+        _constraints.margins = theme().margin;
         return _constraints;
     }
 
@@ -50,7 +50,7 @@ public:
         if (compare_store(_layout, layout)) {
             // The layout of the child widget are also calculated here, which only needs to be done
             // when the layout of the current widget changes.
-            _label_rectangle = align(layout.rectangle(), _label_widget->constraints().preferred, tt::alignment::middle_center);
+            _label_rectangle = align(layout.rectangle(), _label_widget->constraints().preferred, tt::alignment::middle_center());
         }
 
         // The layout of any child widget must always be set, even if the layout didn't actually change.
