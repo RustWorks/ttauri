@@ -5,11 +5,14 @@
 #include "gui_window.hpp"
 #include "gui_system.hpp"
 #include "keyboard_bindings.hpp"
+#include "theme_book.hpp"
+#include "../os_settings.hpp"
 #include "../GFX/gfx_device.hpp"
 #include "../GFX/gfx_surface.hpp"
-#include "../trace.hpp"
 #include "../widgets/window_widget.hpp"
 #include "../widgets/grid_widget.hpp"
+#include "../trace.hpp"
+#include "../log.hpp"
 
 namespace tt::inline v1 {
 
@@ -71,13 +74,20 @@ void gui_window::init()
     }
 
     // Execute a constraint check to determine initial window size.
-    widget->set_constraints();
-    ttlet new_size = widget->constraints().preferred;
+    theme = gui.theme_book->find(*gui.selected_theme.cget(), os_settings::theme_mode()).transform(dpi);
+    ttlet new_size = widget->set_constraints().preferred;
 
     // Reset the keyboard target to not focus anything.
     update_keyboard_target({});
 
-    _setting_change_callback = language::subscribe([this] {
+    // For changes in setting on the OS we should reconstrain/layout/redraw the window
+    // For example when the language or theme changes.
+    _setting_change_callback = os_settings::subscribe([this] {
+        this->request_reconstrain();
+    });
+
+    // Subscribe on theme changes.
+    _selected_theme_callback = gui.selected_theme.subscribe([this] {
         this->request_reconstrain();
     });
 
@@ -122,12 +132,15 @@ void gui_window::render(utc_nanoseconds display_time_point)
     auto need_reconstrain = _reconstrain.exchange(false, std::memory_order_relaxed);
 
 #if 0
-    // For performance checks force reconstraints.
+    // For performance checks force reconstrain.
     need_reconstrain = true;
 #endif
 
     if (need_reconstrain) {
         ttlet t2 = trace<"window::constrain">();
+
+        theme = gui.theme_book->find(*gui.selected_theme.cget(), os_settings::theme_mode()).transform(dpi);
+
         widget->set_constraints();
     }
 
@@ -142,7 +155,7 @@ void gui_window::render(utc_nanoseconds display_time_point)
     // the logic for layout and drawing becomes complicated.
     if (_resize.exchange(false)) {
         // If a widget asked for a resize, change the size of the window to the preferred size of the widgets.
-        ttlet current_size = screen_rectangle.size();
+        ttlet current_size = rectangle.size();
         ttlet new_size = widget->constraints().preferred;
         if (new_size != current_size) {
             tt_log_info("A new preferred window size {} was requested by one of the widget.", new_size);
@@ -151,15 +164,15 @@ void gui_window::render(utc_nanoseconds display_time_point)
 
     } else {
         // Check if the window size matches the minimum and maximum size of the widgets, otherwise resize.
-        ttlet current_size = screen_rectangle.size();
+        ttlet current_size = rectangle.size();
         ttlet new_size = clamp(current_size, widget->constraints().minimum, widget->constraints().maximum);
-        if (new_size != current_size and size_state != gui_window_size::minimized) {
+        if (new_size != current_size and size_state() != gui_window_size::minimized) {
             tt_log_info("The current window size {} must grow or shrink to {} to fit the widgets.", current_size, new_size);
             set_window_size(new_size);
         }
     }
 
-    if (screen_rectangle.size() < widget->constraints().minimum or screen_rectangle.size() > widget->constraints().maximum) {
+    if (rectangle.size() < widget->constraints().minimum or rectangle.size() > widget->constraints().maximum) {
         // Even after the resize above it is possible to have an incorrect window size.
         // For example when minimizing the window.
         // Stop processing rendering for this window here.
@@ -167,7 +180,7 @@ void gui_window::render(utc_nanoseconds display_time_point)
     }
 
     // Update the graphics' surface to the current size of the window.
-    surface->update(screen_rectangle.size());
+    surface->update(rectangle.size());
 
     // Make sure the widget's layout is updated before draw, but after window resize.
     auto need_relayout = _relayout.exchange(false, std::memory_order_relaxed);
@@ -177,15 +190,15 @@ void gui_window::render(utc_nanoseconds display_time_point)
     need_relayout = true;
 #endif
 
-    if (need_reconstrain or need_relayout or widget_size != screen_rectangle.size()) {
+    if (need_reconstrain or need_relayout or widget_size != rectangle.size()) {
         ttlet t2 = trace<"window::layout">();
-        widget_size = screen_rectangle.size();
+        widget_size = rectangle.size();
 
         // Guarantee that the layout size is always at least the minimum size.
         // We do this because it simplifies calculations if no minimum checks are necessary inside widget.
         ttlet widget_layout_size = max(widget->constraints().minimum, widget_size);
         widget->set_layout(
-            widget_layout{widget_layout_size, this->surface->sub_pixel_orientation, gui.writing_direction, display_time_point});
+            widget_layout{widget_layout_size, this->subpixel_orientation(), gui.writing_direction, display_time_point});
 
         // After layout do a complete redraw.
         _redraw_rectangle = aarectangle{widget_size};
@@ -197,16 +210,24 @@ void gui_window::render(utc_nanoseconds display_time_point)
 #endif
 
     // Draw widgets if the _redraw_rectangle was set.
-    if (auto draw_context = surface->render_start(_redraw_rectangle, display_time_point)) {
+    if (auto draw_context = surface->render_start(_redraw_rectangle)) {
         _redraw_rectangle = aarectangle{};
+        draw_context.display_time_point = display_time_point;
+        draw_context.subpixel_orientation = subpixel_orientation();
+        draw_context.background_color = widget->background_color();
+
+        if (_animated_active.update(active ? 1.0f : 0.0f, display_time_point)) {
+            request_redraw();
+        }
+        draw_context.saturation = _animated_active.current_value();
 
         {
             ttlet t2 = trace<"window::draw">();
-            widget->draw(*draw_context);
+            widget->draw(draw_context);
         }
         {
             ttlet t2 = trace<"window::submit">();
-            surface->render_finish(*draw_context, widget->background_color());
+            surface->render_finish(draw_context);
         }
     }
 }
@@ -270,7 +291,7 @@ void gui_window::update_keyboard_target(tt::widget const *new_target_widget, key
     }
 
     // Tell "escape" to all the widget that are not parents of the new widget
-    [[maybe_unused]] ttlet handled = widget->handle_command_recursive(command::gui_cancel, new_target_parent_chain);
+    widget->handle_command_recursive(command::gui_cancel, new_target_parent_chain);
 
     // Tell the new widget that keyboard focus was entered.
     if (new_target_widget) {
@@ -311,6 +332,11 @@ bool gui_window::handle_event(tt::command command) noexcept
     case command::gui_toolbar_open:
         update_keyboard_target(widget.get(), keyboard_focus_group::toolbar, keyboard_focus_direction::forward);
         return true;
+    case command::text_edit_copy:
+        // Widgets, other than the current keyboard target may have text selected and can handle the command::text_edit_copy.
+        widget->handle_command_recursive(command::text_edit_copy);
+        return true;
+
     default:;
     }
     return false;
@@ -382,11 +408,6 @@ bool gui_window::send_event(KeyboardState _state, keyboard_modifiers modifiers, 
 bool gui_window::send_event(grapheme grapheme, bool full) noexcept
 {
     return send_event(keyboard_event(grapheme, full));
-}
-
-bool gui_window::send_event(char32_t c, bool full) noexcept
-{
-    return send_event(grapheme(c), full);
 }
 
 } // namespace tt::inline v1

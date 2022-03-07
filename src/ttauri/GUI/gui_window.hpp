@@ -13,13 +13,14 @@
 #include "keyboard_focus_direction.hpp"
 #include "keyboard_focus_group.hpp"
 #include "theme.hpp"
-#include "../text/gstring.hpp"
+#include "../GFX/subpixel_orientation.hpp"
 #include "../geometry/axis_aligned_rectangle.hpp"
-#include "../chrono.hpp"
-#include "../label.hpp"
 #include "../widgets/window_widget.hpp"
 #include "../widgets/grid_widget.hpp"
 #include "../widgets/toolbar_widget.hpp"
+#include "../chrono.hpp"
+#include "../label.hpp"
+#include "../animator.hpp"
 #include <unordered_set>
 #include <memory>
 #include <mutex>
@@ -53,7 +54,7 @@ public:
      * The size of this rectangle is used to laying out widgets and setting
      * the size of the gfx_surface during rendering.
      */
-    aarectangle screen_rectangle;
+    aarectangle rectangle;
 
     /** The current cursor.
      * Used for optimizing when the operating system cursor is updated.
@@ -62,7 +63,7 @@ public:
      * when it comes back in the application the cursor will be updated
      * correctly.
      */
-    mouse_cursor currentmouse_cursor = mouse_cursor::None;
+    mouse_cursor current_mouse_cursor = mouse_cursor::None;
 
     /*! The window is currently being resized by the user.
      * We can disable expensive redraws during rendering until this
@@ -75,10 +76,6 @@ public:
      */
     bool active = false;
 
-    /*! Current size state of the window.
-     */
-    gui_window_size size_state = gui_window_size::normal;
-
     label title;
 
     /*! Dots-per-inch of the screen where the window is located.
@@ -86,6 +83,11 @@ public:
      * the source for the DPI value.
      */
     float dpi = 72.0;
+
+    /** Theme to use to draw the widgets on this window.
+     * The sizes and colors of the theme have already been adjusted to the window's state and dpi.
+     */
+    tt::theme theme = {};
 
     /** The size of the widget.
      */
@@ -131,9 +133,9 @@ public:
 
     /** Request a rectangle on the window to be redrawn
      */
-    void request_redraw(aarectangle rectangle) noexcept
+    void request_redraw(aarectangle redraw_rectangle) noexcept
     {
-        _redraw_rectangle |= rectangle;
+        _redraw_rectangle |= redraw_rectangle;
     }
 
     /** Request a rectangle on the window to be redrawn
@@ -141,7 +143,7 @@ public:
     void request_redraw() noexcept
     {
         tt_axiom(is_gui_thread());
-        request_redraw(aarectangle{screen_rectangle.size()});
+        request_redraw(aarectangle{rectangle.size()});
     }
 
     void request_relayout() noexcept
@@ -200,17 +202,29 @@ public:
      */
     virtual void close_window() = 0;
 
-    /** Ask the operating system to minimize this window.
+    /** Set the size-state of the window.
+     *
+     * This function is used to change the size of the window to one
+     * of the predefined states: normal, minimized, maximized or full-screen.
      */
-    virtual void minimize_window() = 0;
+    virtual void set_size_state(gui_window_size state) noexcept = 0;
 
-    /** Ask the operating system to maximize this window.
+    /** The rectangle of the workspace of the screen where the window is currently located.
      */
-    virtual void maximize_window() = 0;
+    virtual aarectangle workspace_rectangle() const noexcept = 0;
 
-    /** Ask the operating system to normalize this window.
+    /** The rectangle of the screen where the window is currently located.
      */
-    virtual void normalize_window() = 0;
+    virtual aarectangle fullscreen_rectangle() const noexcept = 0;
+
+    virtual tt::subpixel_orientation subpixel_orientation() const noexcept = 0;
+
+    /** Get the size-state of the window.
+     */
+    gui_window_size size_state() const noexcept
+    {
+        return _size_state;
+    }
 
     /** Open the system menu of the window.
      *
@@ -260,15 +274,9 @@ public:
      */
     void update_keyboard_target(keyboard_focus_group group, keyboard_focus_direction direction) noexcept;
 
-    /** Get the size of the virtual-screen.
-     * Each window may be on a different virtual screen with different
-     * sizes, so retrieve it on a per window basis.
-     */
-    [[nodiscard]] virtual extent2 virtual_screen_size() const noexcept = 0;
-
     [[nodiscard]] translate2 window_to_screen() const noexcept
     {
-        return translate2{screen_rectangle.left(), screen_rectangle.bottom()};
+        return translate2{rectangle.left(), rectangle.bottom()};
     }
 
     [[nodiscard]] translate2 screen_to_window() const noexcept
@@ -277,12 +285,22 @@ public:
     }
 
 protected:
+    static constexpr std::chrono::nanoseconds _animation_duration = std::chrono::milliseconds(150);
+
     std::weak_ptr<delegate_type> _delegate;
 
     std::atomic<aarectangle> _redraw_rectangle = aarectangle{};
     std::atomic<bool> _relayout = true;
     std::atomic<bool> _reconstrain = true;
     std::atomic<bool> _resize = true;
+
+    /** Current size state of the window.
+     */
+    gui_window_size _size_state = gui_window_size::normal;
+
+    /** When the window is minimized, maximized or made full-screen the original size is stored here.
+     */
+    aarectangle _restore_rectangle;
 
     /** The time of the last forced redraw.
      * A forced redraw may happen when needing to draw outside
@@ -292,6 +310,10 @@ protected:
      * the event loop, but on the same thread as the event loop.
      */
     utc_nanoseconds last_forced_redraw = {};
+
+    /** The animated version of the `active` flag.
+     */
+    animator<float> _animated_active = _animation_duration;
 
     /** Let the operating system create the actual window.
      * @pre title and extent must be set.
@@ -346,11 +368,9 @@ protected:
 
     bool send_event(grapheme grapheme, bool full = true) noexcept;
 
-    bool send_event(char32_t c, bool full = true) noexcept;
-
 private:
     std::shared_ptr<std::function<void()>> _setting_change_callback;
-
+    std::shared_ptr<std::function<void()>> _selected_theme_callback;
     /** Target of the mouse
      * Since any mouse event will change the target this is used
      * to check if the target has changed, to send exit events to the previous mouse target.

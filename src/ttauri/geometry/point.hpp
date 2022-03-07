@@ -37,6 +37,15 @@ public:
         tt_axiom(holds_invariant());
     }
 
+    /** Construct a point from a lower dimension point.
+     */
+    [[nodiscard]] constexpr point(point<2> const &other, float z) noexcept requires(D == 3) : _v(static_cast<f32x4>(other))
+    {
+        _v.z() = z;
+        tt_axiom(holds_invariant());
+    }
+
+
     /** Construct a point from a higher dimension point.
      * This will clear the values in the higher dimensions.
      */
@@ -274,6 +283,11 @@ public:
         return point{floor(f32x4{lhs} / rhs_) * rhs_};
     }
 
+    [[nodiscard]] friend constexpr float distance(point const &lhs, point const &rhs) noexcept
+    {
+        return hypot(rhs - lhs);
+    }
+
     /** Check if the point is valid.
      * This function will check if w is not zero, and with a 2D point is z is zero.
      */
@@ -309,10 +323,8 @@ using point3 = geo::point<3>;
 
 } // namespace tt::inline v1
 
-namespace std {
-
 template<typename CharT>
-struct formatter<tt::geo::point<2>, CharT> {
+struct std::formatter<tt::geo::point<2>, CharT> {
     auto parse(auto &pc)
     {
         return pc.end();
@@ -325,7 +337,7 @@ struct formatter<tt::geo::point<2>, CharT> {
 };
 
 template<typename CharT>
-struct formatter<tt::geo::point<3>, CharT> : formatter<float, CharT> {
+struct std::formatter<tt::geo::point<3>, CharT> : std::formatter<float, CharT> {
     auto parse(auto &pc)
     {
         return pc.end();
@@ -336,5 +348,3 @@ struct formatter<tt::geo::point<3>, CharT> : formatter<float, CharT> {
         return std::vformat_to(fc.out(), "<{}, {}, {}>", std::make_format_args(t.x(), t.y(), t.z()));
     }
 };
-
-} // namespace std

@@ -23,15 +23,17 @@ class theme {
 public:
     operating_system operating_system = operating_system::windows;
 
-    float toolbar_height = (operating_system == operating_system::windows) ? 30.0f : 20.0f;
-
-    /** The width of a close, minimize, maximize, system menu button.
+    /** The DPI of the size values.
      */
-    float toolbar_decoration_button_width = (operating_system == operating_system::windows) ? 30.0f : 20.0f;
+    float dpi = 72;
+
+    /** The scale factor used to convert pt to physical pixel size.
+     */
+    float scale = 1.0f;
 
     /** Distance between widgets and between widgets and the border of the container.
      */
-    float margin = 6.0f;
+    float margin = 4.5f;
 
     /** The line-width of a border.
      */
@@ -39,40 +41,52 @@ public:
 
     /** The rounding radius of boxes with rounded corners.
      */
-    float rounding_radius = 5.0f;
+    float rounding_radius = 4.0f;
 
     /** The size of small square widgets.
      */
-    float size = 15.0f;
+    float size = 11.0f;
 
     /** The size of large widgets. Such as the minimum scroll bar size.
      */
-    float large_size = 25.0f;
+    float large_size = 18.5f;
 
     /** Size of icons inside a widget.
      */
-    float icon_size = 10.0f;
+    float icon_size = 7.5f;
 
     /** Size of icons representing the length of am average word of a label's text.
      */
-    float large_icon_size = 30.0f;
+    float large_icon_size = 22.5f;
 
     /** Size of icons being inline with a label's text.
      */
-    float label_icon_size = 20.0f;
+    float label_icon_size = 15.0f;
 
     std::string name;
-    theme_mode mode;
+    theme_mode mode = theme_mode::light;
 
-    theme() noexcept = delete;
-    theme(theme const &) noexcept = delete;
-    theme(theme &&) noexcept = delete;
-    theme &operator=(theme const &) noexcept = delete;
-    theme &operator=(theme &&) noexcept = delete;
+    theme() noexcept = default;
+    theme(theme const &) noexcept = default;
+    theme(theme &&) noexcept = default;
+    theme &operator=(theme const &) noexcept = default;
+    theme &operator=(theme &&) noexcept = default;
 
     /** Open and parse a theme file.
      */
     theme(tt::font_book const &font_book, URL const &url);
+
+    /** Create a transformed copy of the theme.
+    * 
+    * This function is used by the window, to make a specific version of
+    * the theme scaled to the dpi of the window.
+    * 
+    * It can also create a different version when the window becomes active/inactive
+    * mostly this will desaturate the colors in the theme.
+    * 
+    * @param dpi The dpi of the window.
+    */
+    [[nodiscard]] theme transform(float dpi) const noexcept;
 
     [[nodiscard]] tt::color color(theme_color theme_color, ssize_t nesting_level = 0) const noexcept;
     [[nodiscard]] tt::text_style const &text_style(theme_text_style theme_color) const noexcept;

@@ -8,8 +8,8 @@
 #include "../geometry/axis_aligned_rectangle.hpp"
 #include "../geometry/transform.hpp"
 #include "../geometry/translate.hpp"
-#include "../text/unicode_bidi_class.hpp"
-#include "../GFX/sub_pixel_orientation.hpp"
+#include "../unicode/unicode_bidi_class.hpp"
+#include "../GFX/subpixel_orientation.hpp"
 #include "../chrono.hpp"
 
 namespace tt::inline v1 {
@@ -134,16 +134,11 @@ public:
         return size.height();
     }
 
-    [[nodiscard]] constexpr float base_line() const noexcept
-    {
-        return size.height() * 0.5f;
-    }
-
     /** Construct a widget_layout from inside the window.
      */
     constexpr widget_layout(
         extent2 window_size,
-        tt::sub_pixel_orientation sub_pixel_orientation,
+        tt::subpixel_orientation subpixel_orientation,
         unicode_bidi_class writing_direction,
         utc_nanoseconds display_time_point) noexcept :
         to_parent(),
@@ -152,7 +147,7 @@ public:
         from_window(),
         size(window_size),
         clipping_rectangle(window_size),
-        sub_pixel_size(tt::sub_pixel_size(sub_pixel_orientation)),
+        sub_pixel_size(tt::sub_pixel_size(subpixel_orientation)),
         writing_direction(writing_direction),
         display_time_point(display_time_point)
     {

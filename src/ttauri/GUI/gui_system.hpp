@@ -7,11 +7,12 @@
 #include "gui_window.hpp"
 #include "gui_window_win32.hpp"
 #include "gui_system_delegate.hpp"
-#include "../text/unicode_bidi_class.hpp"
+#include "../unicode/unicode_bidi_class.hpp"
 #include "../GFX/gfx_device.hpp"
 #include "../thread.hpp"
 #include "../unfair_recursive_mutex.hpp"
 #include "../event_queue.hpp"
+#include "../observable.hpp"
 #include <span>
 #include <memory>
 #include <mutex>
@@ -50,6 +51,10 @@ public:
      * @note The only values allowed are `L` and `R`.
      */
     unicode_bidi_class writing_direction = unicode_bidi_class::L;
+
+    /** The name of the selected theme.
+     */
+    observable<std::string> selected_theme = "default"; 
 
     /** Make a gui_system instance.
      *
@@ -192,20 +197,6 @@ public:
     {
         return thread_id == current_thread_id();
     }
-
-    /** Set the theme for the system.
-     *
-     * @param new_theme The new theme to use for the gui system.
-     */
-    void set_theme(tt::theme const &new_theme) noexcept;
-
-    /** Get the theme.
-     *
-     * @return The current theme.
-     */
-    tt::theme const &theme() const noexcept;
-
-    void set_theme_mode(tt::theme_mode mode) noexcept;
 
     /** Request all windows to constrain.
      */

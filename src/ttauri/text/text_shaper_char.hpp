@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include "grapheme.hpp"
 #include "text_style.hpp"
 #include "glyph_ids.hpp"
 #include "glyph_metrics.hpp"
-#include "unicode_description.hpp"
 #include "font.hpp"
+#include "../unicode/unicode_description.hpp"
+#include "../unicode/grapheme.hpp"
 #include "../geometry/point.hpp"
 #include "../geometry/axis_aligned_rectangle.hpp"
 
@@ -25,6 +25,10 @@ public:
     /** The style of how to display the grapheme.
      */
     tt::text_style style;
+
+    /** The scale to resize the font's size to match the physical display.
+     */
+    float dpi_scale = 1.0f;
 
     /** The glyph representing one or more graphemes.
      * The glyph will change during shaping of the text:
@@ -43,6 +47,14 @@ public:
      * The metrics are scaled by `scale`.
      */
     tt::glyph_metrics metrics;
+
+    /** The line number where this character is located, counting from top to bottom line.
+     */
+    size_t line_nr;
+
+    /** The column number where the character is located on the line, counting from left to right in display order.
+     */
+    size_t column_nr;
 
     /** Position of the character.
      *
@@ -79,10 +91,18 @@ public:
     unicode_description const *description;
 
     /** The text direction for this glyph.
-    * 
-    * This is needed to figure out where the location of the insert cursor is compared to the character.
-    */
+     *
+     * This is needed to figure out where the location of the insert cursor is compared to the character.
+     */
     unicode_bidi_class direction;
+
+    /** The script of this character.
+     * The script of the character is based on:
+     * - The actual script of this unicode character, or if `unicode_script::Common`;
+     * - The script of characters before/after this character in the same word, or if `unicode_script::Common`;
+     * - The script passed during construction of the text_shaper.
+     */
+    unicode_script script;
 
     /** The scale of the glyph for displaying on the screen.
      */
@@ -95,6 +115,10 @@ public:
      */
     float width = 0.0f;
 
+    /** Set to true if this glyph is a white space at the end of a line.
+     */
+    bool is_trailing_white_space = false;
+
     /** The glyph is the initial glyph.
      *
      * This flag is set to true after loading the initial glyph.
@@ -103,7 +127,7 @@ public:
      */
     bool glyph_is_initial = false;
 
-    [[nodiscard]] text_shaper_char(tt::grapheme const &grapheme, text_style const &style) noexcept;
+    [[nodiscard]] text_shaper_char(tt::grapheme const &grapheme, text_style const &style, float dpi_scale) noexcept;
 
     /** Initialize the glyph based on the grapheme.
      *
@@ -145,6 +169,16 @@ public:
             ttlet kerning = glyph.font().get_kerning(glyph.get_single(), next.glyph.get_single());
             return scale * kerning;
         }
+    }
+
+    [[nodiscard]] friend bool operator==(text_shaper_char const &lhs, char32_t const &rhs) noexcept
+    {
+        return lhs.grapheme == rhs;
+    }
+
+    [[nodiscard]] friend bool operator==(text_shaper_char const &lhs, char const &rhs) noexcept
+    {
+        return lhs.grapheme == rhs;
     }
 
 private:
