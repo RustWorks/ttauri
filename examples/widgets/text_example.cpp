@@ -1,27 +1,28 @@
-// Copyright Take Vos 2021.
+// Copyright Take Vos 2022.
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
-#include "ttauri/GUI/gui_system.hpp"
-#include "ttauri/widgets/text_widget.hpp"
-#include "ttauri/widgets/radio_button_widget.hpp"
-#include "ttauri/GFX/RenderDoc.hpp"
-#include "ttauri/crt.hpp"
-#include "ttauri/log.hpp"
+#include "hikogui/GUI/gui_system.hpp"
+#include "hikogui/widgets/text_widget.hpp"
+#include "hikogui/widgets/radio_button_widget.hpp"
+#include "hikogui/GFX/RenderDoc.hpp"
+#include "hikogui/crt.hpp"
+#include "hikogui/log.hpp"
+#include "hikogui/loop.hpp"
 
-using namespace tt;
+using namespace hi;
 
-int tt_main(int argc, char *argv[])
+int hi_main(int argc, char *argv[])
 {
     auto gui = gui_system::make_unique();
-    auto &window = gui->make_window(l10n("Label example"));
+    auto window = gui->make_window(tr("Label example"));
 
     // Start the logger system, so logging is done asynchronously.
-    tt::log::start_subsystem(tt::global_state_type::log_level_info);
-    tt::time_stamp_count::start_subsystem();
+    hi::log::start_subsystem(hi::global_state_type::log_level_info);
+    hi::time_stamp_count::start_subsystem();
 
     // Startup renderdoc for debugging
-    auto render_doc = tt::RenderDoc();
+    auto render_doc = hi::RenderDoc();
 
     auto latin_text = std::string(
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
@@ -29,8 +30,7 @@ int tt_main(int argc, char *argv[])
         "quis nostrud exercitation ullamco (laboris) nisi ut aliquip ex ea commodo consequat. "
         "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
         "Excepteur sint occaecat cupidatat non proident, "
-        "sunt in culpa qui officia deserunt mollit anim id est laborum."
-    );
+        "sunt in culpa qui officia deserunt mollit anim id est laborum.");
 
     auto hebrew_text = std::string(
         "\xd7\xa6\xd7\x99\xd7\x9c\xd7\x95\xd7\x9d \xd7\xaa\xd7\x97\xd7\x91\xd7\x95\xd7\xa8\xd7\x94 \xd7\xa2\xd7\x9c \xd7"
@@ -78,8 +78,13 @@ int tt_main(int argc, char *argv[])
 
     auto text = to_gstring(latin_text + "\n" + mixed_rtl_text + "\n" + mixed_ltr_text + "\n" + hebrew_text);
 
-    auto &tw = window.content().make_widget<text_widget>("A1", text, tt::alignment::top_justified());
-    tw.edit_mode = text_widget::edit_mode_type::fully_editable;
+    auto& tw = window->content().make_widget<text_widget>("A1", text, hi::alignment::top_justified());
+    tw.mode = hi::widget_mode::enabled;
 
-    return gui->loop();
+    auto close_cb = window->closing.subscribe(
+        [&] {
+            window.reset();
+        },
+        hi::callback_flags::main);
+    return loop::main().resume();
 }

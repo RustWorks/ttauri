@@ -1,14 +1,5 @@
-TTauri GUI library [![Build on Windows](https://github.com/ttauri-project/ttauri/actions/workflows/build-on-windows.yml/badge.svg?branch=main)](https://github.com/ttauri-project/ttauri/actions/workflows/build-on-windows.yml) [![Version](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/ttauri-project/ttauri/main/vcpkg.json&label=Latest%20Version&query=$[%27version%27]&color=blue)](https://github.com/ttauri-project/ttauri/releases/latest) [![License](https://img.shields.io/github/license/ttauri-project/ttauri.svg)](https://github.com/ttauri-project/ttauri/blob/main/LICENSE_1_0.txt)
+HikoGUI GUI library [![Build on Windows](https://github.com/hikogui/hikogui/actions/workflows/build-on-windows.yml/badge.svg?branch=main)](https://github.com/hikogui/hikogui/actions/workflows/build-on-windows.yml) [![Version](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/hikogui/hikogui/main/vcpkg.json&label=Latest%20Version&query=$[%27version%27]&color=blue)](https://github.com/hikogui/hikogui/releases/latest) [![License](https://img.shields.io/github/license/hikogui/hikogui.svg)](https://github.com/hikogui/hikogui/blob/main/LICENSE_1_0.txt)
 ==================
-
-Currently VCPKG builds are not recommended
-------------------------------------------
-
-Due to future changes to the C++20 standard involving ABI changes in
-std::format and std::ranges there are some issues with compatibility
-between compiler and cmake versions. Please use the non-vcpkg builds
-which ensures that cmake and compiler versions are exactly the same.
-
 
 A portable, low latency, retained-mode GUI framework written in C++
 -------------------------------------------------------------------
@@ -21,9 +12,9 @@ and at the screen's refresh rate. Special care is taken for making
 it easy for GUI element to observe and modify data external to the GUI.
 
 You can find a lot more information,
-[documentation](https://www.ttauri-project.org/docs/ttauri/main/index.html),
-[example code](https://github.com/ttauri-project/ttauri_hello_world/blob/main/src/main.cpp),
-news and blog posts on the main web site: <https://www.ttauri-project.org/>
+[documentation](https://hikogui.org/docs/hikogui/main/index.html),
+[example code](https://github.com/hikogui/hikogui_hello_world/blob/main/src/main.cpp),
+news and blog posts on the main web site: <https://hikogui.org/>
 
 Features
 --------
@@ -57,19 +48,19 @@ Features
 Example
 -------
 Here is some example code for an application with three radio buttons,
-who form a set by sharing a single `value` observable.
+who form a set by sharing a single `value` observer.
 
 ```
-int tt_main(int argc, char *argv[])
+int hi_main(int argc, char *argv[])
 {
-    observable<int> value = 0;
+    observer<int> value = 0;
 
-    auto gui = tt::gui_system::make_unique();
-    auto &window = gui.make_window(l10n("Radio button example"));
-    window.content().make_widget<label_widget>("A1", l10n("radio buttons:"));
-    window.content().make_widget<radio_button_widget>("B1", l10n("one"), value, 1);
-    window.content().make_widget<radio_button_widget>("B2", l10n("two"), value, 2);
-    window.content().make_widget<radio_button_widget>("B3", l10n("three"), value, 3);
+    auto gui = hi::gui_system::make_unique();
+    auto &window = gui.make_window(tr("Radio button example"));
+    window.content().make_widget<label_widget>("A1", tr("radio buttons:"));
+    window.content().make_widget<radio_button_widget>("B1", tr("one"), value, 1);
+    window.content().make_widget<radio_button_widget>("B2", tr("two"), value, 2);
+    window.content().make_widget<radio_button_widget>("B3", tr("three"), value, 3);
 
     return gui->loop();
 }
@@ -80,27 +71,32 @@ Platform support
 
 The following platforms are supported:
 
- - MSVC - Windows 10 - x64
+ - MSVC - Windows 10 (or newer) - x64
 
 For hardware support see: [hardware\_support](docs/hardware_support.md)
 
-Installation
-------------
+Installation, Building and Contributing
+---------------------------------------
 
-If you like to help with the development or want to modify ttauri you can
-find instruction how to install the dependencies and how to build ttauri in the
-[CONTRIBUTING](docs/CONTRIBUTING.md) document.
+You can find the install and build instruction for your favorite IDE
+in the [INSTALL.md](INSTALL.md) document.
 
-If you want to use ttauri as a library for your own application you can
-find instructions in the [ttauri_hello_world](https://github.com/ttauri-project/ttauri_hello_world)
-example application's [README](https://github.com/ttauri-project/ttauri_hello_world/blob/main/README.md).
+You can find instruction on how to contribute to the HikoGUI library in the
+[CONTRIBUTING.md](CONTRIBUTING.md) document.
+
+If you want to use HikoGUI as a library for your own application you can
+find instructions in the [hikogui_hello_world](https://github.com/hikogui/hikogui_hello_world)
+example application's [README](https://github.com/hikogui/hikogui_hello_world/blob/main/README.md).
 
 Sponsors
 --------
+
+If you like to become a sponsor, please contribute to
+[Take Vos](https://github.com/sponsors/takev) the main developer of the HikoGUI.
 
 The following people and companies are platinum sponsors:
 
 _There are currently no platinum sponsors._
 
-for more sponsors please see [SPONSORS](SPONSORS.md).
+For more sponsors please see [SPONSORS](SPONSORS.md).
 
