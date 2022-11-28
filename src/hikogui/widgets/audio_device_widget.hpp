@@ -39,12 +39,12 @@ public:
 
     virtual ~audio_device_widget();
 
-    audio_device_widget(gui_window& window, widget *parent, hi::audio_system& audio_system) noexcept;
+    audio_device_widget(widget *parent, hi::audio_system& audio_system) noexcept;
 
     /// @privatesection
     [[nodiscard]] generator<widget *> children() const noexcept override;
-    widget_constraints const& set_constraints() noexcept override;
-    void set_layout(widget_layout const& layout) noexcept override;
+    widget_constraints const& set_constraints(set_constraints_context const& context) noexcept override;
+    void set_layout(widget_layout const& context) noexcept override;
     void draw(draw_context const& context) noexcept override;
     hitbox hitbox_test(point3 position) const noexcept override;
     [[nodiscard]] bool accepts_keyboard_focus(keyboard_focus_group group) const noexcept override;

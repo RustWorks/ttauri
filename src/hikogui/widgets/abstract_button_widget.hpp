@@ -62,14 +62,14 @@ public:
 
     ~abstract_button_widget();
 
-    abstract_button_widget(gui_window& window, widget *parent, std::shared_ptr<delegate_type> delegate) noexcept;
+    abstract_button_widget(widget *parent, std::shared_ptr<delegate_type> delegate) noexcept;
 
     /** Get the current state of the button.
      * @return The state of the button: on / off / other.
      */
     [[nodiscard]] button_state state() const noexcept
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
         hi_assert_not_null(delegate);
         return delegate->state(*this);
     }
@@ -134,7 +134,7 @@ protected:
         }
     }
 
-    widget_constraints set_constraints_button() const noexcept;
+    widget_constraints set_constraints_button(set_constraints_context const &context) const noexcept;
     void set_layout_button(widget_layout const& context) noexcept;
     void draw_button(draw_context const& context) noexcept;
 };

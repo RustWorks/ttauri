@@ -20,6 +20,7 @@
 #include "../observer.hpp"
 #include "../chrono.hpp"
 #include "../generator.hpp"
+#include "set_constraints_context.hpp"
 #include "widget_constraints.hpp"
 #include "widget_layout.hpp"
 #include "widget_mode.hpp"
@@ -43,14 +44,10 @@ class font_book;
  */
 class widget {
 public:
-    /** Convenient reference to the Window.
-     */
-    gui_window& window;
-
     /** Pointer to the parent widget.
      * May be a nullptr only when this is the top level widget.
      */
-    widget *const parent;
+    widget *parent;
 
     /** A name of widget, should be unique between siblings.
      */
@@ -96,27 +93,13 @@ public:
 
     /*! Constructor for creating sub views.
      */
-    widget(gui_window& window, widget *parent) noexcept;
+    widget(widget *parent) noexcept;
 
     virtual ~widget();
     widget(const widget&) = delete;
     widget& operator=(const widget&) = delete;
     widget(widget&&) = delete;
     widget& operator=(widget&&) = delete;
-
-    [[nodiscard]] bool is_gui_thread() const noexcept;
-
-    /** Get the theme.
-     *
-     * @return The current theme.
-     */
-    hi::theme const& theme() const noexcept;
-
-    /** Get the font book.
-     *
-     * @return The font book.
-     */
-    hi::font_book& font_book() const noexcept;
 
     /** Find the widget that is under the mouse cursor.
      * This function will recursively test with visual child widgets, when
@@ -158,7 +141,7 @@ public:
      */
     [[nodiscard]] virtual bool accepts_keyboard_focus(keyboard_focus_group group) const noexcept
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
         return false;
     }
 
@@ -173,7 +156,7 @@ public:
      * @post This function will change what is returned by `widget::minimum_size()`, `widget::preferred_size()`
      *       and `widget::maximum_size()`.
      */
-    virtual widget_constraints const& set_constraints() noexcept = 0;
+    virtual widget_constraints const& set_constraints(set_constraints_context const& context) noexcept = 0;
 
     widget_constraints const& constraints() const noexcept
     {
@@ -191,7 +174,7 @@ public:
      *       matrices.
      * @param layout The layout for this child.
      */
-    virtual void set_layout(widget_layout const& layout) noexcept = 0;
+    virtual void set_layout(widget_layout const& context) noexcept = 0;
 
     /** Get the current layout for this widget.
      */
@@ -216,43 +199,21 @@ public:
      */
     virtual void draw(draw_context const& context) noexcept = 0;
 
+    virtual bool process_event(gui_event const& event) const noexcept
+    {
+        if (parent != nullptr) {
+            return parent->process_event(event);
+        } else {
+            return true;
+        }
+    }
+
     /** Request the widget to be redrawn on the next frame.
      */
-    virtual void request_redraw() const noexcept;
-
-    /** Request the window to be relayout on the next frame.
-     */
-    void request_relayout() const noexcept;
-
-    /** Request the window to be reconstrain on the next frame.
-     */
-    template<fixed_string SourceFile, int SourceLine, fixed_string Fmt, typename... Args>
-    void request_reconstrain(Args&&...args) const noexcept
+    void request_redraw() const noexcept
     {
-        constexpr auto FmtPlus = fixed_string{"request_reconstrain:"} + Fmt;
-
-        log_global.add<global_state_type::log_info, SourceFile, SourceLine, FmtPlus>(std::forward<Args>(args)...);
-        _request_reconstrain();
+        process_event({gui_event_type::window_redraw, layout().clipping_rectangle_on_window()});
     }
-
-#define hi_request_reconstrain(fmt, ...) \
-    hi_format_check(fmt __VA_OPT__(, ) __VA_ARGS__); \
-    this->request_reconstrain<__FILE__, __LINE__, fmt>(__VA_ARGS__)
-
-    /** Request the window to be resize based on the preferred size of the widgets.
-     */
-    template<fixed_string SourceFile, int SourceLine, fixed_string Fmt, typename... Args>
-    void request_resize(Args&&...args) const noexcept
-    {
-        constexpr auto FmtPlus = fixed_string{"request_resize:"} + Fmt;
-
-        log_global.add<global_state_type::log_info, SourceFile, SourceLine, FmtPlus>(std::forward<Args>(args)...);
-        _request_resize();
-    }
-
-#define hi_request_resize(fmt, ...) \
-    hi_format_check(fmt __VA_OPT__(, ) __VA_ARGS__); \
-    this->request_resize<__FILE__, __LINE__, fmt>(__VA_ARGS__)
 
     /** Handle command.
      * If a widget does not fully handle a command it should pass the
@@ -351,10 +312,5 @@ protected:
      * @return A rectangle that fits the window's constraints in the local coordinate system.
      */
     [[nodiscard]] aarectangle make_overlay_rectangle(aarectangle requested_rectangle) const noexcept;
-
-private:
-    void _request_reconstrain() const noexcept;
-    void _request_resize() const noexcept;
 };
-
 }} // namespace hi::v1

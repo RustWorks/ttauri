@@ -16,7 +16,7 @@ public:
 
     // Every constructor of a widget starts with a `window` and `parent` argument.
     // In most cases these are automatically filled in when calling a container widget's `make_widget()` function.
-    command_widget(hi::gui_window& window, hi::widget *parent) noexcept : hi::widget(window, parent)
+    command_widget(hi::widget *parent) noexcept : hi::widget(parent)
     {
         // To visually show the change in value the widget needs to be redrawn.
         _value_cbt = value.subscribe([&](auto...) {
@@ -26,30 +26,30 @@ public:
 
     // The set_constraints() function is called when the window is first initialized,
     // or when a widget wants to change its constraints.
-    hi::widget_constraints const& set_constraints() noexcept override
+    hi::widget_constraints const& set_constraints(hi::set_constraints_context const& context) noexcept override
     {
         // Reset _layout so that the set_layout() calculations will be triggered.
         _layout = {};
 
         // Set the minimum, preferred, maximum sizes and the margin around the widget.
-        return _constraints = {{100.0f, 20.0f}, {200.0f, 20.0f}, {300.0f, 50.0f}, theme().margin};
+        return _constraints = {{100.0f, 20.0f}, {200.0f, 20.0f}, {300.0f, 50.0f}, context.theme->margin};
     }
 
     // The `set_layout()` function is called when the window has resized, or when
     // a widget wants to change the internal layout.
     //
     // NOTE: The size of the layout may be larger than the maximum constraints of this widget.
-    void set_layout(hi::widget_layout const& layout) noexcept override
+    void set_layout(hi::widget_layout const& context) noexcept override
     {
         // Update the `_layout` with the new context.
-        if (compare_store(_layout, layout)) {}
+        if (compare_store(_layout, context)) {}
     }
 
     // It is common to override the context sensitive colors of the default widget.
     // In this case the background color is 'teal' when the value of the widget is true.
     [[nodiscard]] hi::color background_color() const noexcept override
     {
-        return *value ? theme().color(hi::semantic_color::green) : widget::background_color();
+        return *value ? layout().theme->color(hi::semantic_color::green) : widget::background_color();
     }
 
     // The `draw()` function is called when all or part of the window requires redrawing.
@@ -68,9 +68,9 @@ public:
                 _layout.rectangle(),
                 background_color(),
                 focus_color(),
-                theme().border_width,
+                layout().theme->border_width,
                 hi::border_side::inside,
-                theme().rounding_radius);
+                layout().theme->rounding_radius);
         }
     }
 
@@ -78,7 +78,7 @@ public:
     [[nodiscard]] bool accepts_keyboard_focus(hi::keyboard_focus_group group) const noexcept override
     {
         // This widget will react to "normal" tab/shift-tab keys and mouse clicks to focus the widget.
-        return *mode >= hi::widget_mode::partial and any(group & hi::keyboard_focus_group::normal);
+        return *mode >= hi::widget_mode::partial and to_bool(group & hi::keyboard_focus_group::normal);
     }
 
     // Override this function when your widget needs to be controllable by mouse interaction.
@@ -90,7 +90,7 @@ public:
             // The `this` argument allows the gui_window to forward mouse events to handle_event(mouse) of this widget.
             // The `position` argument is used to handle widgets that are visually overlapping, widgets with higher elevation
             // get priority. When this widget is enabled it should show a button-cursor, otherwise just the normal arrow.
-            return {this, position, *mode >= hi::widget_mode::partial ? hi::hitbox::Type::Button : hi::hitbox::Type::Default};
+            return {this, position, *mode >= hi::widget_mode::partial ? hi::hitbox_type::button : hi::hitbox_type::_default};
 
         } else {
             return {};

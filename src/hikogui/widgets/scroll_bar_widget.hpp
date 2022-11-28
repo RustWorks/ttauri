@@ -41,50 +41,56 @@ public:
     observer<float> content;
 
     scroll_bar_widget(
-        gui_window& window,
         widget *parent,
         forward_of<observer<float>> auto&& content,
         forward_of<observer<float>> auto&& aperture,
         forward_of<observer<float>> auto&& offset) noexcept :
-        widget(window, parent), content(hi_forward(content)), aperture(hi_forward(aperture)), offset(hi_forward(offset))
+        widget(parent), content(hi_forward(content)), aperture(hi_forward(aperture)), offset(hi_forward(offset))
     {
-        // clang-format off
-        _content_cbt = this->content.subscribe([&](auto...){ request_relayout(); });
-        _aperture_cbt = this->aperture.subscribe([&](auto...){ request_relayout(); });
-        _offset_cbt = this->offset.subscribe([&](auto...){ request_relayout(); });
-        // clang-format on
+        _content_cbt = this->content.subscribe([&](auto...) {
+            ++global_counter<"scroll_bar_widget:content:relayout">;
+            process_event({gui_event_type::window_relayout});
+        });
+        _aperture_cbt = this->aperture.subscribe([&](auto...) {
+            ++global_counter<"scroll_bar_widget:aperture:relayout">;
+            process_event({gui_event_type::window_relayout});
+        });
+        _offset_cbt = this->offset.subscribe([&](auto...) {
+            ++global_counter<"scroll_bar_widget:offset:relayout">;
+            process_event({gui_event_type::window_relayout});
+        });
     }
 
     ~scroll_bar_widget() {}
 
-    widget_constraints const& set_constraints() noexcept override
+    widget_constraints const& set_constraints(set_constraints_context const& context) noexcept override
     {
         _layout = {};
 
-        // The minimum size is twice the length of the slider, which is twice the theme().size()
+        // The minimum size is twice the length of the slider, which is twice the context.theme->size()
         if constexpr (axis == axis::vertical) {
             return _constraints = {
-                       {theme().icon_size, theme().size * 4.0f},
-                       {theme().icon_size, theme().size * 4.0f},
-                       {theme().icon_size, 32767.0f}};
+                       {context.theme->icon_size, context.theme->size * 4.0f},
+                       {context.theme->icon_size, context.theme->size * 4.0f},
+                       {context.theme->icon_size, 32767.0f}};
         } else {
             return _constraints = {
-                       {theme().size * 4.0f, theme().icon_size},
-                       {theme().size * 4.0f, theme().icon_size},
-                       {32767.0f, theme().icon_size}};
+                       {context.theme->size * 4.0f, context.theme->icon_size},
+                       {context.theme->size * 4.0f, context.theme->icon_size},
+                       {32767.0f, context.theme->icon_size}};
         }
     }
 
-    void set_layout(widget_layout const& layout) noexcept override
+    void set_layout(widget_layout const& context) noexcept override
     {
-        _layout = layout;
+        _layout = context;
 
         // Calculate the position of the slider.
         hilet slider_offset = *offset * travel_vs_hidden_content_ratio();
         if constexpr (axis == axis::vertical) {
-            _slider_rectangle = aarectangle{0.0f, slider_offset, layout.width(), slider_length()};
+            _slider_rectangle = aarectangle{0.0f, slider_offset, context.width(), slider_length()};
         } else {
-            _slider_rectangle = aarectangle{slider_offset, 0.0f, slider_length(), layout.height()};
+            _slider_rectangle = aarectangle{slider_offset, 0.0f, slider_length(), context.height()};
         }
     }
 
@@ -98,10 +104,10 @@ public:
 
     hitbox hitbox_test(point3 position) const noexcept override
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
 
         if (*mode >= widget_mode::partial and layout().contains(position) and _slider_rectangle.contains(position)) {
-            return {this, position};
+            return {this, position, hitbox_type::scroll_bar};
         } else {
             return {};
         }
@@ -143,15 +149,15 @@ public:
 
     [[nodiscard]] color background_color() const noexcept override
     {
-        return theme().color(semantic_color::fill, semantic_layer);
+        return _layout.theme->color(semantic_color::fill, semantic_layer);
     }
 
     [[nodiscard]] color foreground_color() const noexcept override
     {
         if (*hover) {
-            return theme().color(semantic_color::fill, semantic_layer + 2);
+            return _layout.theme->color(semantic_color::fill, semantic_layer + 2);
         } else {
-            return theme().color(semantic_color::fill, semantic_layer + 1);
+            return _layout.theme->color(semantic_color::fill, semantic_layer + 1);
         }
     }
 
@@ -176,24 +182,24 @@ private:
 
     [[nodiscard]] float rail_length() const noexcept
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
         return axis == axis::vertical ? layout().height() : layout().width();
     }
 
     [[nodiscard]] float slider_length() const noexcept
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
 
         hilet content_aperture_ratio = *content != 0.0f ? *aperture / *content : 1.0f;
         hilet rail_length_ = rail_length();
-        return std::clamp(rail_length_ * content_aperture_ratio, theme().size * 2.0f, rail_length_);
+        return std::clamp(rail_length_ * content_aperture_ratio, _layout.theme->size * 2.0f, rail_length_);
     }
 
     /** The amount of travel that the slider can make.
      */
     [[nodiscard]] float slider_travel_range() const noexcept
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
         return rail_length() - slider_length();
     }
 
@@ -201,7 +207,7 @@ private:
      */
     [[nodiscard]] float hidden_content() const noexcept
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
         return *content - *aperture;
     }
 
@@ -211,7 +217,7 @@ private:
      */
     [[nodiscard]] float hidden_content_vs_travel_ratio() const noexcept
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
 
         hilet _slider_travel_range = slider_travel_range();
         return _slider_travel_range != 0.0f ? hidden_content() / _slider_travel_range : 0.0f;
@@ -223,7 +229,7 @@ private:
      */
     [[nodiscard]] float travel_vs_hidden_content_ratio() const noexcept
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
 
         hilet _hidden_content = hidden_content();
         return _hidden_content != 0.0f ? slider_travel_range() / _hidden_content : 0.0f;

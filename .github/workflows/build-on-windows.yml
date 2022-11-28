@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: 🤘 Checkout Code
-        uses: actions/checkout@v2 # https://github.com/actions/checkout
+        uses: actions/checkout@v3 # https://github.com/actions/checkout
 
       - name: ℹ Show Tool Versions
         run: |
@@ -159,22 +159,17 @@ jobs:
       # This enables the "Unit Test Result" display to show all individual test runs of the matrix.
       # The tests are published after all matrix runs finished (from job: "publish-test-results").
       - name: 🔼 Upload Test Results
-        uses: actions/upload-artifact@v2 # https://github.com/actions/upload-artifact
+        uses: actions/upload-artifact@v3 # https://github.com/actions/upload-artifact
         if: always()
         with:
           name: test-results
           path: test_results_*.xml
 
-      - name: 🔽 Install 'OpenCppCoverage' and 'codecov.io Report Uploader'
-        if: endsWith(matrix.config.NAME, '-debug') && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: 📑 Generate CodeCoverage Report
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           curl -L -O https://github.com/OpenCppCoverage/OpenCppCoverage/releases/download/release-0.9.9.0/OpenCppCoverageSetup-x64-0.9.9.0.exe
           OpenCppCoverageSetup-x64-0.9.9.0.exe /VERYSILENT /DIR=.\bin\coverage
-          curl -L https://uploader.codecov.io/latest/windows/codecov.exe --output bin\coverage\codecov.exe
-
-      - name: 📑 Generate CodeCoverage Report
-        if: endsWith(matrix.config.NAME, '-debug') && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
           .\bin\coverage\OpenCppCoverage.exe --sources=src ^
           --excluded_sources=src\*_tests.cpp ^
           --excluded_sources=src\*\*_tests.cpp ^
@@ -185,8 +180,8 @@ jobs:
           -- ".\\build-dbg\\hikogui_tests.exe"
 
       - name: 📦 🚀 Upload CodeCoverage Report to codecov.io
-        if: endsWith(matrix.config.NAME, '-debug') && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: codecov/codecov-action@v2 # https://github.com/codecov/codecov-action
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: codecov/codecov-action@v3 # https://github.com/codecov/codecov-action
         with:
           files: ./hikogui_coverage.xml
 
@@ -201,7 +196,7 @@ jobs:
     #
     #  # To ensure that jobs don't overwrite existing artifacts, use a different "name" per job/run.
     #  - name: 📦 🚀 Upload Artifact
-    #    uses: actions/upload-artifact@v2 # https://github.com/actions/upload-artifact
+    #    uses: actions/upload-artifact@v3 # https://github.com/actions/upload-artifact
     #    with:
     #      name: ${{env.ARTIFACT_NAME}}
     #      path: build/${{env.ARTIFACT_NAME}}.zip
@@ -220,12 +215,12 @@ jobs:
 
     steps:
       - name: 🔽 Download Artifacts
-        uses: actions/download-artifact@v2 # https://github.com/actions/download-artifact
+        uses: actions/download-artifact@v3 # https://github.com/actions/download-artifact
         with:
           path: artifacts
 
       - name: 👌 Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1 # https://github.com/EnricoMi/publish-unit-test-result-action
+        uses: EnricoMi/publish-unit-test-result-action@v2 # https://github.com/EnricoMi/publish-unit-test-result-action
         if: always()
         with:
           files: artifacts/**/test_results*.xml

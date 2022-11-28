@@ -31,10 +31,10 @@ public:
 
     ~system_menu_widget() {}
 
-    system_menu_widget(gui_window& window, widget *parent) noexcept;
+    system_menu_widget(widget *parent) noexcept;
 
-    system_menu_widget(gui_window& window, widget *parent, forward_of<observer<hi::icon>> auto&& icon) noexcept :
-        system_menu_widget(window, parent)
+    system_menu_widget(widget *parent, forward_of<observer<hi::icon>> auto&& icon) noexcept :
+        system_menu_widget(parent)
     {
         this->icon = hi_forward(icon);
     }
@@ -45,8 +45,8 @@ public:
         co_yield _icon_widget.get();
     }
 
-    widget_constraints const& set_constraints() noexcept override;
-    void set_layout(widget_layout const& layout) noexcept override;
+    widget_constraints const& set_constraints(set_constraints_context const& context) noexcept override;
+    void set_layout(widget_layout const& context) noexcept override;
     void draw(draw_context const& context) noexcept override;
     [[nodiscard]] hitbox hitbox_test(point3 position) const noexcept override;
     /// @endprivatesection

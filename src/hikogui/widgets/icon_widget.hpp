@@ -45,8 +45,8 @@ public:
      */
     observer<alignment> alignment = hi::alignment::middle_center();
 
-    icon_widget(gui_window& window, widget *parent, icon_widget_attribute auto&&...attributes) noexcept :
-        icon_widget(window, parent)
+    icon_widget(widget *parent, icon_widget_attribute auto&&...attributes) noexcept :
+        icon_widget(parent)
     {
         set_attributes(hi_forward(attributes)...);
     }
@@ -67,8 +67,8 @@ public:
     }
 
     /// @privatesection
-    widget_constraints const& set_constraints() noexcept override;
-    void set_layout(widget_layout const& layout) noexcept override;
+    widget_constraints const& set_constraints(set_constraints_context const& context) noexcept override;
+    void set_layout(widget_layout const& context) noexcept override;
     void draw(draw_context const& context) noexcept override;
     /// @endprivatesection
 private:
@@ -83,7 +83,7 @@ private:
     extent2 _icon_size;
     aarectangle _icon_rectangle;
 
-    icon_widget(gui_window& window, widget *parent) noexcept;
+    icon_widget(widget *parent) noexcept;
 };
 
 }} // namespace hi::v1

@@ -47,12 +47,11 @@ public:
 
     /** Constructs an empty row/column widget.
      *
-     * @param window The window.
      * @param parent The parent widget.
      */
-    row_column_widget(gui_window& window, widget *parent) noexcept : super(window, parent)
+    row_column_widget(widget *parent) noexcept : super(parent)
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
 
         if (parent) {
             semantic_layer = parent->semantic_layer;
@@ -74,10 +73,11 @@ public:
     template<typename Widget, typename... Args>
     Widget& make_widget(Args&&...args)
     {
-        auto tmp = std::make_unique<Widget>(window, this, std::forward<Args>(args)...);
+        auto tmp = std::make_unique<Widget>(this, std::forward<Args>(args)...);
         auto& ref = *tmp;
         _children.push_back(std::move(tmp));
-        hi_request_reconstrain("row_column_widget::make_widget()");
+        ++global_counter<"row_column_widget:make_widget:constrain">;
+        process_event({gui_event_type::window_reconstrain});
         return ref;
     }
 
@@ -85,9 +85,10 @@ public:
      */
     void clear() noexcept
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
         _children.clear();
-        hi_request_reconstrain("row_column_widget::clear()");
+        ++global_counter<"row_column_widget:clear:constrain">;
+        process_event({gui_event_type::window_reconstrain});
     }
 
     /// @privatesection
@@ -98,7 +99,7 @@ public:
         }
     }
 
-    widget_constraints const& set_constraints() noexcept override
+    widget_constraints const& set_constraints(set_constraints_context const& context) noexcept override
     {
         _layout = {};
 
@@ -114,6 +115,7 @@ public:
         _grid_layout.clear();
         for (hilet& child : _children) {
             update_constraints_for_child(
+                context,
                 *child,
                 index++,
                 minimum_thickness,
@@ -149,15 +151,15 @@ public:
         }
     }
 
-    void set_layout(widget_layout const& layout) noexcept override
+    void set_layout(widget_layout const& context) noexcept override
     {
-        if (compare_store(_layout, layout)) {
-            _grid_layout.layout(axis == axis::row ? layout.width() : layout.height());
+        if (compare_store(_layout, context)) {
+            _grid_layout.layout(axis == axis::row ? context.width() : context.height());
         }
 
         ssize_t index = 0;
         for (hilet& child : _children) {
-            update_layout_for_child(*child, index++, layout);
+            update_layout_for_child(*child, index++, context);
         }
 
         hi_assert(index == ssize(_children));
@@ -174,7 +176,7 @@ public:
 
     hitbox hitbox_test(point3 position) const noexcept override
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
 
         if (*mode >= widget_mode::partial) {
             auto r = hitbox{};
@@ -192,6 +194,7 @@ private:
     grid_layout _grid_layout;
 
     void update_constraints_for_child(
+        set_constraints_context const& context,
         widget& child,
         ssize_t index,
         float& minimum_thickness,
@@ -201,9 +204,9 @@ private:
         float& margin_after_thickness,
         widget_baseline& baseline) noexcept
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
 
-        hilet& child_constraints = child.set_constraints();
+        hilet& child_constraints = child.set_constraints(context);
         if (axis == axis::row) {
             _grid_layout.add_constraint(
                 index,
@@ -240,7 +243,7 @@ private:
 
     void update_layout_for_child(widget& child, ssize_t index, widget_layout const& context) const noexcept
     {
-        hi_axiom(is_gui_thread());
+        hi_axiom(loop::main().on_thread());
 
         hilet[child_position, child_length] = _grid_layout.get_position_and_size(index);
 

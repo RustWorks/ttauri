@@ -20,18 +20,18 @@ class triangle_widget : public hi::widget, public hi::gfx_surface_delegate_vulka
 public:
     // Every constructor of a widget starts with a `window` and `parent` argument.
     // In most cases these are automatically filled in when calling a container widget's `make_widget()` function.
-    triangle_widget(hi::gui_window& window, hi::widget *parent) noexcept : widget(window, parent) {
-        window.surface->add_delegate(this);
+    triangle_widget(hi::widget *parent, hi::gfx_surface &surface) noexcept : widget(parent), _surface(surface) {
+        _surface.add_delegate(this);
     }
 
     ~triangle_widget()
     {
-        window.surface->remove_delegate(this);
+        _surface.remove_delegate(this);
     }
 
     // The set_constraints() function is called when the window is first initialized,
     // or when a widget wants to change its constraints.
-    hi::widget_constraints const& set_constraints() noexcept override
+    hi::widget_constraints const& set_constraints(hi::set_constraints_context const& context) noexcept override
     {
         // Almost all widgets will reset the `_layout` variable here so that it will
         // trigger the calculations in `set_layout()` as well.
@@ -44,20 +44,20 @@ public:
         // When the window is initially created it will try to size itself so that
         // the contained widgets are at their preferred size. Having a different minimum
         // and/or maximum size will allow the window to be resizable.
-        return _constraints = {{400, 300}, {640, 480}, {1024, 860}, theme().margin};
+        return _constraints = {{400, 300}, {640, 480}, {1024, 860}, context.theme->margin};
     }
 
     // The `set_layout()` function is called when the window has resized, or when
     // a widget wants to change the internal layout.
     //
     // NOTE: The size of the layout may be larger than the maximum constraints of this widget.
-    void set_layout(hi::widget_layout const& layout) noexcept override
+    void set_layout(hi::widget_layout const& context) noexcept override
     {
         // Update the `_layout` with the new context, in this case we want to do some
         // calculations when the size or location of the widget was changed.
-        if (compare_store(_layout, layout)) {
-            auto view_port = _layout.window_rectangle();
-            auto window_height = window.widget->layout().height();
+        if (compare_store(_layout, context)) {
+            auto view_port = context.rectangle_on_window();
+            auto window_height = context.window_size.height();
 
             // We calculate the view-port used for 3D rendering from the location and size
             // of the widget within the window. We use the window-height so that we can make
@@ -71,7 +71,7 @@ public:
     // The `draw()` function is called when all or part of the window requires redrawing.
     // This may happen when showing the window for the first time, when the operating-system
     // requests a (partial) redraw, or when a widget requests a redraw of itself.
-    // 
+    //
     // This draw() function only draws the GUI part of the widget, there is another draw() function
     // that will draw the 3D part.
     void draw(hi::draw_context const& context) noexcept override
@@ -104,7 +104,7 @@ public:
         //  - the semaphores when to start drawing, and when the drawing is finished.
         //  - The render-area, which is like the dirty-rectangle that needs to be redrawn.
         //  - View-port the part of the frame buffer that matches this widget's rectangle.
-        // 
+        //
         // The "vulkan graphics engine" is responsible to not drawn outside the neither
         // the render-area nor outside the view-port.
         _triangle_example->render(
@@ -173,6 +173,7 @@ public:
     }
 
 private:
+    hi::gfx_surface &_surface;
     std::shared_ptr<TriangleExample> _triangle_example;
     VkRect2D _view_port;
 };
@@ -188,7 +189,7 @@ hi::task<> main_window(hi::gui_system& gui)
 
     // Create the vulkan triangle-widget as the content of the window. The content
     // of the window is a grid, we only use the cell "A1" for this widget.
-    window->content().make_widget<triangle_widget>("A1");
+    window->content().make_widget<triangle_widget>("A1", *window->surface);
 
     // Wait until the window is "closing" because the operating system says so, or when
     // the X is pressed.

@@ -37,10 +37,9 @@ public:
 
     /** Constructs an empty row/column widget.
      *
-     * @param window The window.
      * @param parent The parent widget.
      */
-    toolbar_widget(gui_window& window, widget *parent) noexcept;
+    toolbar_widget(widget *parent) noexcept;
 
     /** Add a widget directly to this toolbar-widget.
      *
@@ -60,7 +59,7 @@ public:
     template<typename Widget, horizontal_alignment Alignment = horizontal_alignment::left, typename... Args>
     Widget& make_widget(Args&&...args)
     {
-        auto widget = std::make_unique<Widget>(window, this, std::forward<Args>(args)...);
+        auto widget = std::make_unique<Widget>(this, std::forward<Args>(args)...);
         return static_cast<Widget&>(add_widget(Alignment, std::move(widget)));
     }
 
@@ -75,8 +74,8 @@ public:
         }
     }
 
-    widget_constraints const& set_constraints() noexcept;
-    void set_layout(widget_layout const& layout) noexcept override;
+    widget_constraints const& set_constraints(set_constraints_context const &context) noexcept;
+    void set_layout(widget_layout const& context) noexcept override;
     void draw(draw_context const& context) noexcept override;
     hitbox hitbox_test(point3 position) const noexcept override;
     [[nodiscard]] color focus_color() const noexcept override;
@@ -88,6 +87,7 @@ private:
     margins _inner_margins;
 
     void update_constraints_for_child(
+        set_constraints_context const &context,
         widget& child,
         ssize_t index,
         float& shared_height,

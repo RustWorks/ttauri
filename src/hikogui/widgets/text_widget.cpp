@@ -6,29 +6,57 @@
 #include "../os_settings.hpp"
 #include "../scoped_task.hpp"
 #include "../when_any.hpp"
-#include "../GUI/gui_window.hpp"
 #include "../unicode/unicode_bidi.hpp"
 
 namespace hi::inline v1 {
 
-text_widget::text_widget(gui_window& window, widget *parent, std::shared_ptr<delegate_type> delegate) noexcept :
-    super(window, parent), delegate(std::move(delegate))
+text_widget::text_widget(widget *parent, std::shared_ptr<delegate_type> delegate) noexcept :
+    super(parent), delegate(std::move(delegate))
 {
     mode = widget_mode::select;
 
     hi_assert_not_null(this->delegate);
     _delegate_cbt = this->delegate->subscribe([&] {
-        hi_request_reconstrain("text_widget::_delegate_cbt()");
+        // On every text edit, immediately/synchronously update the shaped text.
+        // This is needed for handling multiple edit commands before the next frame update.
+        if (_layout.font_book != nullptr and _layout.theme != nullptr) {
+            hilet c_context = set_constraints_context{_layout.font_book, _layout.theme};
+
+            auto new_layout = _layout;
+            hilet old_constraints = _constraints;
+
+            // Constrain and layout according to the old layout.
+            hilet new_constraints = set_constraints(c_context);
+            inplace_max(new_layout.size, new_constraints.minimum);
+            set_layout(new_layout);
+
+            if (new_constraints != old_constraints) {
+                // The constraints have changed, properly constrain and layout on the next frame.
+                ++global_counter<"text_widget:delegate:constrain">;
+                request_scroll();
+                process_event({gui_event_type::window_reconstrain});
+            }
+        } else {
+            // The layout is incomplete, properly constrain and layout on the next frame.
+            ++global_counter<"text_widget:delegate:constrain">;
+            request_scroll();
+            process_event({gui_event_type::window_reconstrain});
+        }
     });
 
     _text_style_cbt = text_style.subscribe([&](auto...) {
-        hi_request_reconstrain("text_widget::_text_style_cbt()");
+        ++global_counter<"text_widget:text_style:constrain">;
+        request_scroll();
+        process_event({gui_event_type::window_reconstrain});
     });
 
     _cursor_state_cbt = _cursor_state.subscribe([&](auto...) {
+        ++global_counter<"text_widget:cursor_state:redraw">;
         request_redraw();
     });
 
+    // If the text_widget is used as a label the blink_cursor() co-routine
+    // is only waiting on `model` and `focus`, so this is cheap.
     _blink_cursor = blink_cursor();
 
     this->delegate->init(*this);
@@ -40,32 +68,33 @@ text_widget::~text_widget()
     delegate->deinit(*this);
 }
 
-void text_widget::update_shaped_text() noexcept
-{
-    _selection.resize(_cached_text.size());
-    _shaped_text = text_shaper{font_book(), _cached_text, theme().text_style(*text_style), theme().scale};
-}
-
-widget_constraints const& text_widget::set_constraints() noexcept
+widget_constraints const& text_widget::set_constraints(set_constraints_context const& context) noexcept
 {
     _layout = {};
 
+    // Read the latest text from the delegate.
     hi_assert_not_null(delegate);
     _cached_text = delegate->read(*this);
-    update_shaped_text();
+
+    // Make sure that the current selection fits the new text.
+    _selection.resize(_cached_text.size());
+
+    // Create a new text_shaper with the new text.
+    _shaped_text = text_shaper{*context.font_book, _cached_text, context.theme->text_style(*text_style), context.theme->scale};
+
     hilet shaped_text_rectangle = _shaped_text.bounding_rectangle(std::numeric_limits<float>::infinity(), alignment->vertical());
     hilet shaped_text_size = shaped_text_rectangle.size();
 
     // clang-format off
     hilet baseline =
-        *alignment == vertical_alignment::top ? widget_baseline{0.1f, 1.0f, theme().cap_height * -1.0f} :
-        *alignment == vertical_alignment::middle ? widget_baseline{0.1f, 0.5f, theme().cap_height * -0.5f} :
+        *alignment == vertical_alignment::top ? widget_baseline{0.1f, 1.0f, context.theme->cap_height * -1.0f} :
+        *alignment == vertical_alignment::middle ? widget_baseline{0.1f, 0.5f, context.theme->cap_height * -0.5f} :
         widget_baseline{0.1f, 0.0f, 0.0f};
     // clang-format on
 
     if (*mode == widget_mode::partial) {
         // In line-edit mode the text should not wrap.
-        return _constraints = {shaped_text_size, shaped_text_size, shaped_text_size, theme().margin, baseline};
+        return _constraints = {shaped_text_size, shaped_text_size, shaped_text_size, context.theme->margin, baseline};
 
     } else {
         // Allow the text to be 550.0f pixels wide.
@@ -77,20 +106,17 @@ widget_constraints const& text_widget::set_constraints() noexcept
                    extent2{preferred_shaped_text_size.width(), height},
                    extent2{preferred_shaped_text_size.width(), height},
                    extent2{shaped_text_size.width(), height},
-                   theme().margin,
+                   context.theme->margin,
                    baseline};
     }
 }
 
-void text_widget::set_layout(widget_layout const& layout) noexcept
+void text_widget::set_layout(widget_layout const& context) noexcept
 {
-    if (compare_store(_layout, layout)) {
-        auto alignment_ = layout.left_to_right() ? *alignment : mirror(*alignment); 
+    if (compare_store(_layout, context)) {
+        auto alignment_ = context.left_to_right() ? *alignment : mirror(*alignment);
 
-        _shaped_text.layout(layout.rectangle(), layout.baseline, layout.sub_pixel_size, layout.writing_direction, alignment_);
-
-        // Update scroll position every time the text or layout has changed.
-        _request_scroll = true;
+        _shaped_text.layout(context.rectangle(), context.baseline, context.sub_pixel_size, context.writing_direction, alignment_);
     }
 }
 
@@ -110,6 +136,7 @@ void text_widget::request_scroll() noexcept
     // At a minimum we need to request a redraw so that
     // `scroll_to_show_selection()` is called on the next frame.
     _request_scroll = true;
+    ++global_counter<"text_widget:request_scroll:redraw">;
     request_redraw();
 }
 
@@ -169,21 +196,22 @@ void text_widget::draw(draw_context const& context) noexcept
             text_widget::handle_event(new_mouse_event);
         }
         scroll_to_show_selection();
+        ++global_counter<"text_widget:mouse_drag:redraw">;
         request_redraw();
     }
 
     if (*mode > widget_mode::invisible and overlaps(context, layout())) {
         context.draw_text(layout(), _shaped_text);
 
-        context.draw_text_selection(layout(), _shaped_text, _selection, theme().color(semantic_color::text_select));
+        context.draw_text_selection(layout(), _shaped_text, _selection, layout().theme->color(semantic_color::text_select));
 
         if (*_cursor_state == cursor_state_type::on or *_cursor_state == cursor_state_type::busy) {
             context.draw_text_cursors(
                 layout(),
                 _shaped_text,
                 _selection.cursor(),
-                theme().color(semantic_color::primary_cursor),
-                theme().color(semantic_color::secondary_cursor),
+                layout().theme->color(semantic_color::primary_cursor),
+                layout().theme->color(semantic_color::secondary_cursor),
                 _overwrite_mode,
                 to_bool(_has_dead_character));
         }
@@ -362,7 +390,7 @@ void text_widget::reset_state(char const *states) noexcept
 
 bool text_widget::handle_event(gui_event const& event) noexcept
 {
-    hi_axiom(is_gui_thread());
+    hi_axiom(loop::main().on_thread());
 
     switch (event.type()) {
         using enum gui_event_type;
@@ -374,7 +402,7 @@ bool text_widget::handle_event(gui_event const& event) noexcept
         // When the next widget is selected due to pressing the Tab key the text should be committed.
         // The `text_widget` does not handle gui_activate, so it will be forwarded to parent widgets,
         // such as `text_field_widget` which does.
-        window.process_event(gui_event_type::gui_activate);
+        process_event(gui_event_type::gui_activate);
         return super::handle_event(event);
 
     case keyboard_grapheme:
@@ -405,12 +433,12 @@ bool text_widget::handle_event(gui_event const& event) noexcept
     case text_edit_paste:
         if (*mode >= partial) {
             reset_state("BDX");
-            replace_selection(to_gstring(window.get_text_from_clipboard(), U' '));
+            replace_selection(to_gstring(event.clipboard_data(), U' '));
             return true;
 
         } else if (*mode >= enabled) {
             reset_state("BDX");
-            replace_selection(to_gstring(window.get_text_from_clipboard()));
+            replace_selection(to_gstring(event.clipboard_data()));
             return true;
         }
         break;
@@ -419,7 +447,7 @@ bool text_widget::handle_event(gui_event const& event) noexcept
         if (*mode >= select) {
             reset_state("BDX");
             if (hilet selected_text_ = selected_text(); not selected_text_.empty()) {
-                window.set_text_on_clipboard(to_string(selected_text_));
+                process_event(gui_event::make_clipboard_event(gui_event_type::window_set_clipboard, to_string(selected_text_)));
             }
             return true;
         }
@@ -428,7 +456,7 @@ bool text_widget::handle_event(gui_event const& event) noexcept
     case text_edit_cut:
         if (*mode >= select) {
             reset_state("BDX");
-            window.set_text_on_clipboard(to_string(selected_text()));
+            process_event(gui_event::make_clipboard_event(gui_event_type::window_set_clipboard, to_string(selected_text())));
             if (*mode >= partial) {
                 replace_selection(gstring{});
             }
@@ -782,7 +810,8 @@ bool text_widget::handle_event(gui_event const& event) noexcept
             default:;
             }
 
-            request_relayout();
+            ++global_counter<"text_widget:mouse_down:relayout">;
+            process_event({gui_event_type::window_relayout});
             request_scroll();
             return true;
         }
@@ -816,6 +845,7 @@ bool text_widget::handle_event(gui_event const& event) noexcept
             // causes this coordinate system to shift, so translate it to the window coordinate system here.
             _last_drag_mouse_event = event;
             _last_drag_mouse_event.mouse().position = point2{_layout.to_window * event.mouse().position};
+            ++global_counter<"text_widget:mouse_drag:redraw">;
             request_redraw();
             return true;
         }
@@ -829,14 +859,14 @@ bool text_widget::handle_event(gui_event const& event) noexcept
 
 hitbox text_widget::hitbox_test(point3 position) const noexcept
 {
-    hi_axiom(is_gui_thread());
+    hi_axiom(loop::main().on_thread());
 
     if (layout().contains(position)) {
         if (*mode >= widget_mode::partial) {
-            return hitbox{this, position, hitbox::Type::TextEdit};
+            return hitbox{this, position, hitbox_type::text_edit};
 
         } else if (*mode >= widget_mode::select) {
-            return hitbox{this, position, hitbox::Type::Default};
+            return hitbox{this, position, hitbox_type::_default};
 
         } else {
             return hitbox{};
@@ -849,9 +879,9 @@ hitbox text_widget::hitbox_test(point3 position) const noexcept
 [[nodiscard]] bool text_widget::accepts_keyboard_focus(keyboard_focus_group group) const noexcept
 {
     if (*mode >= widget_mode::partial) {
-        return any(group & keyboard_focus_group::normal);
+        return to_bool(group & keyboard_focus_group::normal);
     } else if (*mode >= widget_mode::select) {
-        return any(group & keyboard_focus_group::mouse);
+        return to_bool(group & keyboard_focus_group::mouse);
     } else {
         return false;
     }
