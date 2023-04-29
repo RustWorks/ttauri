@@ -36,7 +36,7 @@ namespace hi { inline namespace v1 {
  * window which observes the same `value`. Each tab button is configured with a
  * different `on_value`: 0, 1 and 2.
  *
- * @snippet widgets/tab_example.cpp Create three toolbar tab buttons
+ * @snippet widgets/tab_example_impl.cpp Create three toolbar tab buttons
  *
  * @ingroup widgets
  * @note A toolbar tab button does not directly control a `tab_widget`. Like
@@ -97,7 +97,7 @@ public:
     {
     }
 
-    void request_redraw() const noexcept
+    void request_redraw() const noexcept override
     {
         // A toolbar tab button draws a focus line across the whole toolbar
         // which is beyond it's own clipping rectangle. The parent is the toolbar
@@ -110,12 +110,14 @@ public:
     }
 
     /// @privatesection
-    widget_constraints const& set_constraints(set_constraints_context const& context) noexcept override;
+    [[nodiscard]] box_constraints update_constraints() noexcept override;
     void set_layout(widget_layout const& context) noexcept override;
     void draw(draw_context const& context) noexcept override;
     [[nodiscard]] bool accepts_keyboard_focus(keyboard_focus_group group) const noexcept override;
     // @endprivatesection
 private:
+    box_constraints _label_constraints;
+
     void draw_toolbar_tab_button(draw_context const& context) noexcept;
 };
 

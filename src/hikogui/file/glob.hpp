@@ -9,9 +9,8 @@
  */
 
 #include "path_location.hpp"
-#include "../char_maps/to_string.hpp"
-#include "../utility.hpp"
-#include "../type_traits.hpp"
+#include "../char_maps/module.hpp"
+#include "../utility/module.hpp"
 #include <vector>
 #include <string>
 #include <string_view>
@@ -776,7 +775,7 @@ private:
 
     template<bool Left>
     [[nodiscard]] constexpr static bool
-    matches_strip(const_iterator& first, const_iterator& last, std::u32string_view& str) noexcept
+    matches_strip(const_iterator& first, const_iterator & last, std::u32string_view& str) noexcept
     {
         while (first != last) {
             hilet it = Left ? first : last - 1;

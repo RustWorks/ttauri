@@ -15,7 +15,7 @@
  */
 
 
-#include "hikogui/rapid/sfloat_rgba32x4.hpp"
+#include "hikogui/module.hpp"
 #include <vulkan/vulkan.h>
 #include <vma/vk_mem_alloc.h>
 #include <stdio.h>
@@ -27,7 +27,7 @@
 #include <exception>
 #include <filesystem>
 
-// This example is a copy of https://github.com/SaschaWillems/Vulkan/blob/master/examples/triangle/triangle.cpp
+// This example is a copy of https://github.com/SaschaWillems/Vulkan/blob/master/examples/triangle/triangle_impl.cpp
 // It is modified so:
 //  - It does not use any other utility files.
 //  - It is reordered so that the swap-chain can be replaced on window resize.
@@ -42,7 +42,7 @@ public:
     void buildForNewSwapchain(std::vector<VkImageView> const& imageViews, VkExtent2D imageSize, VkFormat imageFormat);
     void teardownForLostSwapchain();
 
-    virtual void render(
+    void render(
         uint32_t currentBuffer,
         VkSemaphore presentCompleteSemaphore,
         VkSemaphore renderCompleteSemaphore,

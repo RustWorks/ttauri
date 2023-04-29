@@ -4,27 +4,17 @@
 
 target_sources(hikogui PRIVATE
     base_n.hpp
-    gzip.cpp
+    gzip_impl.cpp
     gzip.hpp
-    inflate.cpp
+    inflate_impl.cpp
     inflate.hpp
-    JSON.cpp
+    JSON_impl.cpp
     JSON.hpp
-    png.cpp
+    png_impl.cpp
     png.hpp
     SHA2.hpp
-    zlib.cpp
+    zlib_impl.cpp
     zlib.hpp
     BON8.hpp
-    BON8.cpp
+    BON8_impl.cpp
 )
-
-if(BUILD_TESTING)
-    target_sources(hikogui_tests PRIVATE
-        BON8_tests.cpp
-        JSON_tests.cpp
-        gzip_tests.cpp
-        base_n_tests.cpp
-        SHA2_tests.cpp
-    )
-endif()

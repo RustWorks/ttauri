@@ -54,24 +54,31 @@ public:
     [[nodiscard]] toolbar_widget& toolbar() noexcept;
 
     /// @privatesection
-    [[nodiscard]] generator<widget *> children() const noexcept override;
-    widget_constraints const& set_constraints(set_constraints_context const& context) noexcept override;
-    void set_layout(widget_layout const& context) noexcept;
+    [[nodiscard]] generator<widget const &> children(bool include_invisible) const noexcept override;
+    [[nodiscard]] box_constraints update_constraints() noexcept override;
+    void set_layout(widget_layout const& context) noexcept override;
     void draw(draw_context const& context) noexcept override;
-    [[nodiscard]] hitbox hitbox_test(point3 position) const noexcept override;
+    [[nodiscard]] hitbox hitbox_test(point2i position) const noexcept override;
     bool handle_event(gui_event const& event) noexcept override;
     bool process_event(gui_event const& event) const noexcept override;
+    [[nodiscard]] gui_window *window() const noexcept override;
+    [[nodiscard]] hi::theme const& theme() const noexcept override;
+    [[nodiscard]] gfx_surface const *surface() const noexcept override;
     /// @endprivatesection
 private:
     gui_window *_window;
-    
-    aarectangle _content_rectangle;
-    widget_constraints _content_constraints;
-    std::unique_ptr<grid_widget> _content;
 
-    aarectangle _toolbar_rectangle;
-    widget_constraints _toolbar_constraints;
+    std::unique_ptr<grid_widget> _content;
+    box_constraints _content_constraints;
+    box_shape _content_shape;
+
     std::unique_ptr<toolbar_widget> _toolbar;
+    box_constraints _toolbar_constraints;
+    box_shape _toolbar_shape;
+
+    mutable bool _can_resize_width;
+    mutable bool _can_resize_height;
+
 #if HI_OPERATING_SYSTEM == HI_OS_WINDOWS
     system_menu_widget *_system_menu = nullptr;
 #endif

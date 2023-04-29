@@ -4,7 +4,7 @@
 
 #include "unicode_bidi.hpp"
 #include "../file/file_view.hpp"
-#include "../charconv.hpp"
+#include "../utility/module.hpp"
 #include "../ranges.hpp"
 #include "../strings.hpp"
 #include "../generator.hpp"
@@ -154,7 +154,6 @@ TEST(unicode_bidi, bidi_test)
                 paragraph_direction == unicode_bidi_class::R ? hi::unicode_bidi_context::mode_type::RTL :
                 hi::unicode_bidi_context::mode_type::auto_LTR;
             // clang-format on
-            test_parameters.move_lf_and_ps_to_end_of_line = false;
 
             auto input = test.get_input();
             auto first = begin(input);
@@ -227,7 +226,7 @@ struct unicode_bidi_character_test {
     auto r = unicode_bidi_character_test{};
     r.line_nr = line_nr;
     std::transform(begin(hex_characters), end(hex_characters), std::back_inserter(r.characters), [](hilet &x) {
-        return static_cast<char32_t>(hi::from_string<uint32_t>(x, 16));
+        return char_cast<char32_t>(hi::from_string<uint32_t>(x, 16));
     });
 
     r.paragraph_direction = paragraph_direction == 0 ? unicode_bidi_class::L :
@@ -290,7 +289,6 @@ TEST(unicode_bidi, bidi_character_test)
             test.paragraph_direction == unicode_bidi_class::R ? hi::unicode_bidi_context::mode_type::RTL :
             hi::unicode_bidi_context::mode_type::auto_LTR;
         // clang-format on
-        test_parameters.move_lf_and_ps_to_end_of_line = false;
 
         auto input = test.get_input();
         auto first = begin(input);

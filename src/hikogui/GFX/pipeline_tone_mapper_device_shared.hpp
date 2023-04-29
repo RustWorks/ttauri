@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "../utility.hpp"
-#include "../geometry/axis_aligned_rectangle.hpp"
+#include "../utility/module.hpp"
+#include "../geometry/module.hpp"
 #include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 #include <mutex>
@@ -35,13 +35,13 @@ struct device_shared final {
      * This is called in the destructor of gfx_device_vulkan, therefor we can not use our `std::weak_ptr<gfx_device_vulkan>
      * device`.
      */
-    void destroy(gfx_device_vulkan *vulkanDevice);
+    void destroy(gfx_device_vulkan const *vulkanDevice);
 
-    void drawInCommandBuffer(vk::CommandBuffer &commandBuffer);
+    void drawInCommandBuffer(vk::CommandBuffer const &commandBuffer);
 
 private:
     void buildShaders();
-    void teardownShaders(gfx_device_vulkan *vulkanDevice);
+    void teardownShaders(gfx_device_vulkan const*vulkanDevice);
 };
 
 } // namespace pipeline_tone_mapper

@@ -4,10 +4,7 @@
 
 #pragma once
 
-#include "utility.hpp"
-#include "assert.hpp"
-#include "memory.hpp"
-#include "cast.hpp"
+#include "utility/module.hpp"
 #include <memory>
 #include <algorithm>
 #include <string>
@@ -649,7 +646,7 @@ public:
 
     [[nodiscard]] constexpr std::size_t size() const noexcept
     {
-        return static_cast<std::size_t>(_it_end - _begin);
+        return narrow_cast<std::size_t>(_it_end - _begin);
     }
 
     [[nodiscard]] constexpr bool empty() const noexcept
@@ -664,7 +661,7 @@ public:
 
     constexpr void reserve(std::size_t new_capacity) noexcept
     {
-        hilet extra_capacity = static_cast<ssize_t>(new_capacity) - capacity();
+        hilet extra_capacity = narrow_cast<ptrdiff_t>(new_capacity) - capacity();
         if (extra_capacity <= 0) {
             return;
         }
@@ -1111,7 +1108,7 @@ private:
 
     [[nodiscard]] constexpr size_type left_size() const noexcept
     {
-        return static_cast<size_type>(_gap_begin - _begin);
+        return narrow_cast<size_type>(_gap_begin - _begin);
     }
 
     [[nodiscard]] constexpr value_type const *right_begin_ptr() const noexcept

@@ -71,21 +71,23 @@ public:
     }
 
     /// @privatesection
-    [[nodiscard]] generator<widget *> children() const noexcept override
+    [[nodiscard]] generator<widget const &> children(bool include_invisible) const noexcept override
     {
-        co_yield _content.get();
+        co_yield *_content;
     }
 
-    widget_constraints const& set_constraints(set_constraints_context const& context) noexcept override;
+    [[nodiscard]] box_constraints update_constraints() noexcept override;
     void set_layout(widget_layout const& context) noexcept override;
     void draw(draw_context const& context) noexcept override;
     [[nodiscard]] color background_color() const noexcept override;
     [[nodiscard]] color foreground_color() const noexcept override;
-    void scroll_to_show(hi::aarectangle rectangle) noexcept override;
-    [[nodiscard]] hitbox hitbox_test(point3 position) const noexcept override;
+    void scroll_to_show(hi::aarectanglei rectangle) noexcept override;
+    [[nodiscard]] hitbox hitbox_test(point2i position) const noexcept override;
     /// @endprivatesection
 private:
     std::unique_ptr<widget> _content;
+    box_constraints _content_constraints;
+    box_shape _content_shape;
 
     void draw_background(draw_context const& context) noexcept;
 };

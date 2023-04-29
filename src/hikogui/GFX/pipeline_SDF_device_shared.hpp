@@ -5,34 +5,29 @@
 #pragma once
 
 #include "pipeline_SDF_texture_map.hpp"
+#include "pipeline_SDF_vertex.hpp"
 #include "pipeline_SDF_specialization_constants.hpp"
-#include "../text/glyph_ids.hpp"
-#include "../text/glyph_atlas_info.hpp"
-#include "../utility.hpp"
+#include "../font/module.hpp"
+#include "../utility/module.hpp"
 #include "../log.hpp"
 #include "../vector_span.hpp"
-#include "../geometry/rectangle.hpp"
-#include "../geometry/scale.hpp"
-#include "../geometry/transform.hpp"
-#include "../color/quad_color.hpp"
+#include "../geometry/module.hpp"
+#include "../color/module.hpp"
 #include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 #include <mutex>
 #include <unordered_map>
 
 namespace hi::inline v1 {
-template<typename T>
-class pixel_map;
 class mat;
 class gfx_device_vulkan;
-class shaped_text;
 struct attributed_glyph;
 
 namespace pipeline_SDF {
 struct Image;
 struct vertex;
 
-struct device_shared final {
+struct device_shared {
     // Studies in China have shown that literate individuals know and use between 3,000 and 4,000 characters.
     // Handle up to 7 * 7 * 128 == 6321 characters with a 16 x 1024 x 1024, 16 x 1 MByte
     //
@@ -85,14 +80,14 @@ struct device_shared final {
      * This is called in the destructor of gfx_device_vulkan, therefor we can not use our `std::weak_ptr<gfx_device_vulkan>
      * device`.
      */
-    void destroy(gfx_device_vulkan *vulkanDevice);
+    void destroy(gfx_device_vulkan const *vulkanDevice);
 
     /** Allocate an glyph in the atlas.
      * This may allocate an atlas texture, up to atlasMaximumNrImages.
      */
     [[nodiscard]] glyph_atlas_info allocate_rect(extent2 draw_extent, scale2 draw_scale) noexcept;
 
-    void drawInCommandBuffer(vk::CommandBuffer &commandBuffer);
+    void drawInCommandBuffer(vk::CommandBuffer const &commandBuffer);
 
     /** Once drawing in the staging pixmap is completed, you can upload it to the atlas.
      * This will transition the stating texture to 'source' and the atlas to 'destination'.
@@ -106,10 +101,6 @@ struct device_shared final {
     /** This will transition the atlas to 'shader-read'.
      */
     void prepare_atlas_for_rendering();
-
-    /** Prepare the atlas for drawing a text.
-     */
-    void prepareAtlas(shaped_text const &text) noexcept;
 
     /** Get the bounding box, including draw border of a glyph.
      */
@@ -134,10 +125,10 @@ struct device_shared final {
 
 private:
     void buildShaders();
-    void teardownShaders(gfx_device_vulkan *vulkanDevice);
+    void teardownShaders(gfx_device_vulkan const*vulkanDevice);
     void addAtlasImage();
     void buildAtlas();
-    void teardownAtlas(gfx_device_vulkan *vulkanDevice);
+    void teardownAtlas(gfx_device_vulkan const*vulkanDevice);
     void add_glyph_to_atlas(glyph_ids const &glyph, glyph_atlas_info &info) noexcept;
 
     /**

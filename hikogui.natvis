@@ -1,5 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <Type Name="hi::v1::lean_vector&lt;*&gt;">
+        <Expand>
+            <Item Condition="_ptr == nullptr" Name="[size]" ExcludeView="simple">0</Item>
+            <Item Condition="reinterpret_cast&lt;unsigned long long&gt;(_ptr) &amp; 1 == 0" Name="[size]" ExcludeView="simple">_end - _ptr</Item>
+            <Item Condition="reinterpret_cast&lt;unsigned long long&gt;(_ptr) &amp; 1 == 1" Name="[size]" ExcludeView="simple">(reinterpret_cast&lt;unsigned long long&gt;(_ptr) &gt;&gt; 1) &amp; 0x7f</Item>
+
+            <Item Condition="reinterpret_cast&lt;unsigned long long&gt;(_ptr) &amp; 1 == 0" Name="[capacity]" ExcludeView="simple">_cap - _ptr</Item>
+            <Item Condition="_ptr == nullptr || (reinterpret_cast&lt;unsigned long long&gt;(_ptr) &amp; 1 == 1)" Name="[capacity]" ExcludeView="simple">(23 - value_alignment) / sizeof(value_type)</Item>
+            <ArrayItems Condition="reinterpret_cast&lt;unsigned long long&gt;(_ptr) &amp; 1 == 0">
+                <Size>_end - _ptr</Size>
+                <ValuePointer>_ptr</ValuePointer>
+            </ArrayItems>
+            <ArrayItems Condition="reinterpret_cast&lt;unsigned long long&gt;(_ptr) &amp; 1 == 1">
+                <Size>(reinterpret_cast&lt;unsigned long long&gt;(_ptr) &gt;&gt; 1) &amp; 0x7f</Size>
+                <ValuePointer>reinterpret_cast&lt;pointer&gt;(reinterpret_cast&lt;unsigned long long&gt;(&amp;_ptr) + value_alignment)</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
     <Type Name="hi::v1::datum">
         <DisplayString Condition="_tag == 0">undefined</DisplayString>
         <DisplayString Condition="_tag == 1">{_value._double}</DisplayString>
@@ -66,30 +84,39 @@
         </Expand>
     </Type>
     <Type Name="hi::v1::alignment">
-        <DisplayString Condition="_value == 0x00">top-flush</DisplayString>
-        <DisplayString Condition="_value == 0x01">top-left</DisplayString>
-        <DisplayString Condition="_value == 0x02">top-center</DisplayString>
-        <DisplayString Condition="_value == 0x03">top-justified</DisplayString>
-        <DisplayString Condition="_value == 0x04">top-right</DisplayString>
-        <DisplayString Condition="_value == 0x10">middle-flush</DisplayString>
-        <DisplayString Condition="_value == 0x11">middle-left</DisplayString>
-        <DisplayString Condition="_value == 0x12">middle-center</DisplayString>
-        <DisplayString Condition="_value == 0x13">middle-justified</DisplayString>
-        <DisplayString Condition="_value == 0x14">middle-right</DisplayString>
-        <DisplayString Condition="_value == 0x20">bottom-flush</DisplayString>
-        <DisplayString Condition="_value == 0x21">bottom-left</DisplayString>
-        <DisplayString Condition="_value == 0x22">bottom-center</DisplayString>
-        <DisplayString Condition="_value == 0x23">bottom-justified</DisplayString>
-        <DisplayString Condition="_value == 0x24">bottom-right</DisplayString>
+        <DisplayString Condition="_value == 0x00">none-none</DisplayString>
+        <DisplayString Condition="_value == 0x01">none-flush</DisplayString>
+        <DisplayString Condition="_value == 0x02">none-left</DisplayString>
+        <DisplayString Condition="_value == 0x03">none-center</DisplayString>
+        <DisplayString Condition="_value == 0x04">none-justified</DisplayString>
+        <DisplayString Condition="_value == 0x05">none-right</DisplayString>
+        <DisplayString Condition="_value == 0x10">top-none</DisplayString>
+        <DisplayString Condition="_value == 0x11">top-flush</DisplayString>
+        <DisplayString Condition="_value == 0x12">top-left</DisplayString>
+        <DisplayString Condition="_value == 0x13">top-center</DisplayString>
+        <DisplayString Condition="_value == 0x14">top-justified</DisplayString>
+        <DisplayString Condition="_value == 0x15">top-right</DisplayString>
+        <DisplayString Condition="_value == 0x20">middle-none</DisplayString>
+        <DisplayString Condition="_value == 0x21">middle-flush</DisplayString>
+        <DisplayString Condition="_value == 0x22">middle-left</DisplayString>
+        <DisplayString Condition="_value == 0x23">middle-center</DisplayString>
+        <DisplayString Condition="_value == 0x24">middle-justified</DisplayString>
+        <DisplayString Condition="_value == 0x35">middle-right</DisplayString>
+        <DisplayString Condition="_value == 0x30">bottom-none</DisplayString>
+        <DisplayString Condition="_value == 0x31">bottom-flush</DisplayString>
+        <DisplayString Condition="_value == 0x32">bottom-left</DisplayString>
+        <DisplayString Condition="_value == 0x33">bottom-center</DisplayString>
+        <DisplayString Condition="_value == 0x34">bottom-justified</DisplayString>
+        <DisplayString Condition="_value == 0x35">bottom-right</DisplayString>
     </Type>
-    <Type Name="hi::v1::numeric_array&lt;*,2&gt;">
+    <Type Name="hi::v1::simd&lt;*,2&gt;">
         <DisplayString>{v[0],g}, {v[1],g}</DisplayString>
         <Expand>
             <Item Name="[x]">v[0],g</Item>
             <Item Name="[y]">v[1],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::numeric_array&lt;*,4&gt;">
+    <Type Name="hi::v1::simd&lt;*,4&gt;">
         <DisplayString>{v[0],g}, {v[1],g}, {v[2],g}, {v[3],g}</DisplayString>
         <Expand>
             <Item Name="[x]">v[0],g</Item>
@@ -98,7 +125,7 @@
             <Item Name="[w]">v[3],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::numeric_array&lt;*,8&gt;">
+    <Type Name="hi::v1::simd&lt;*,8&gt;">
         <DisplayString>{v[0],g}, {v[1],g}, {v[2],g}, {v[3],g}, {v[4],g}, {v[5],g}, {v[6],g}, {v[7],g}</DisplayString>
         <Expand>
             <Item Name="[0]">v[0],g</Item>
@@ -111,14 +138,14 @@
             <Item Name="[7]">v[7],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::point&lt;2&gt;">
+    <Type Name="hi::v1::geo::point&lt;*,2&gt;">
         <DisplayString>&lt;{_v.v[0],g}, {_v.v[1],g}&gt;</DisplayString>
         <Expand>
             <Item Name="[x]">_v.v[0],g</Item>
             <Item Name="[y]">_v.v[1],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::point&lt;3&gt;">
+    <Type Name="hi::v1::geo::point&lt;*,3&gt;">
         <DisplayString>&lt;{_v.v[0],g}, {_v.v[1],g}, {_v.v[2],g}&gt;</DisplayString>
         <Expand>
             <Item Name="[x]">_v.v[0],g</Item>
@@ -126,14 +153,14 @@
             <Item Name="[z]">_v.v[2],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::vector&lt;2&gt;">
+    <Type Name="hi::v1::geo::vector&lt;*,2&gt;">
         <DisplayString>({_v.v[0],g}, {_v.v[1],g})</DisplayString>
         <Expand>
             <Item Name="[x]">_v.v[0],g</Item>
             <Item Name="[y]">_v.v[1],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::vector&lt;3&gt;">
+    <Type Name="hi::v1::geo::vector&lt;*,3&gt;">
         <DisplayString>({_v.v[0],g}, {_v.v[1],g}, {_v.v[2],g})</DisplayString>
         <Expand>
             <Item Name="[x]">_v.v[0],g</Item>
@@ -141,14 +168,14 @@
             <Item Name="[z]">_v.v[2],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::extent&lt;2&gt;">
+    <Type Name="hi::v1::geo::extent&lt;*,2&gt;">
         <DisplayString>[{_v.v[0],g}, {_v.v[1],g}]</DisplayString>
         <Expand>
             <Item Name="[width]">_v.v[0],g</Item>
             <Item Name="[height]">_v.v[1],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::extent&lt;3&gt;">
+    <Type Name="hi::v1::geo::extent&lt;*,3&gt;">
         <DisplayString>[{_v.v[0],g}, {_v.v[1],g}, {_v.v[2],g}]</DisplayString>
         <Expand>
             <Item Name="[width]">_v.v[0],g</Item>
@@ -185,6 +212,15 @@
             <Item Name="[up]">up</Item>
         </Expand>
     </Type>
+    <Type Name="hi::v1::circle">
+        <DisplayString>{{ c=({_v.v[0],g}, {_v.v[1],g}), r={_v.v[3],g} }}</DisplayString>
+        <Expand>
+            <Item Name="[x]">_v.v[0],g</Item>
+            <Item Name="[y]">_v.v[1],g</Item>
+            <Item Name="[z]">_v.v[2],g</Item>
+            <Item Name="[radius]">_v.v[3],g</Item>
+        </Expand>
+    </Type>
     <Type Name="hi::v1::quad">
         <DisplayString>{{ {p0}, {p1}, {p2}, {p3} }}</DisplayString>
         <Expand>
@@ -194,7 +230,7 @@
             <Item Name="[3]">p3</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::axis_aligned_rectangle">
+    <Type Name="hi::v1::geo::axis_aligned_rectangle&lt;*&gt;">
         <DisplayString>{{ &lt;{v.v[0],g}, {v.v[1],g}&gt;, [{v.v[2] - v.v[0],g}, {v.v[3] - v.v[1],g}] }}</DisplayString>
         <Expand>
             <Item Name="[left]">v.v[0],g</Item>
@@ -208,10 +244,16 @@
     <Type Name="hi::v1::sfloat_rgba32x4">
         <DisplayString>({_v[0],g}, {_v[1],g}, {_v[2],g}, {_v[3],g}), ({_v[4],g}, {_v[5],g}, {_v[6],g}, {_v[7],g}), ({_v[8],g}, {_v[9],g}, {_v[10],g}, {_v[11],g}), ({_v[12],g}, {_v[13],g}, {_v[14],g}, {_v[15],g})</DisplayString>
     </Type>
+    <Type Name="hi::v1::box_shape">
+        <DisplayString Condition="baseline._Has_value &amp;&amp; centerline._Has_value">{{&lt;{x,g}, {y,g}&gt; [{width,g}, {height,g}] b={baseline,g} c={centerline,g}}}</DisplayString>
+        <DisplayString Condition="baseline._Has_value">{{&lt;{x,g}, {y,g}&gt; [{width,g}, {height,g}] b={baseline,g}}}</DisplayString>
+        <DisplayString Condition="centerline._Has_value">{{&lt;{x,g}, {y,g}&gt; [{width,g}, {height,g}] c={centerline,g}}}</DisplayString>
+        <DisplayString>{{&lt;{x,g}, {y,g}&gt; [{width,g}, {height,g}]}}</DisplayString>
+    </Type>
     <Type Name="hi::v1::observer&lt;*&gt;">
         <DisplayString>{_value} #{_observed._ptr->_enable_group_ptr_owners.size()}</DisplayString>
         <Expand>
-            <Item Name="[value]">_value</Item>
+            <Item Name="[value]">_debug_value</Item>
             <Item Name="[observer count]">_observed._ptr->_enable_group_ptr_owners.size()</Item>
         </Expand>
     </Type>
@@ -247,7 +289,10 @@
     <Type Name="hi::v1::endian_buf_t&lt;short,1,1&gt;">
         <DisplayString>{static_cast&lt;int16_t&gt;(_value[0] * 256 + _value[1])}</DisplayString>
     </Type>
-    <Type Name="hi::v1::FWord_buf_t">
+    <Type Name="hi::v1::endian_buf_t&lt;unsigned short,1,1&gt;">
+        <DisplayString>{static_cast&lt;uint16_t&gt;(_value[0] * 256 + _value[1])}</DisplayString>
+    </Type>
+    <Type Name="hi::v1::otype_fword_buf_t">
         <DisplayString>{static_cast&lt;int16_t&gt;(x._value[0] * 256 + x._value[1])}</DisplayString>
     </Type>
 </AutoVisualizer>

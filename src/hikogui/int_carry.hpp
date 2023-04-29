@@ -4,10 +4,7 @@
 
 #pragma once
 
-#include "utility.hpp"
-#include "assert.hpp"
-#include "type_traits.hpp"
-#include "architecture.hpp"
+#include "utility/module.hpp"
 #include <complex>
 #include <cmath>
 #include <limits>
@@ -25,6 +22,9 @@
 hi_warning_push();
 // C4702 unreachable code: Suppressed due intrinsics and std::is_constant_evaluated()
 hi_warning_ignore_msvc(4702);
+// C26472: Don't use static_cast for arithmetic conversions... (type.1)
+// int_carry does many static_casts on purpose.
+hi_warning_ignore_msvc(26472)
 
 namespace hi {
 
@@ -127,7 +127,7 @@ hi_force_inline constexpr std::pair<T, T> add_carry(T lhs, T rhs, T carry = T{0}
 
     constexpr std::size_t num_bits = sizeof(T) * CHAR_BIT;
 
-    if constexpr (has_uintxx_v<num_bits * 2>) {
+    if constexpr (has_native_uintxx_v<num_bits * 2>) {
         // We can use a native type that has double the size.
         using U = make_uintxx_t<num_bits * 2>;
 
@@ -164,7 +164,7 @@ hi_force_inline constexpr std::pair<T, T> mul_carry(T lhs, T rhs, T carry = T{0}
 {
     constexpr std::size_t num_bits = sizeof(T) * CHAR_BIT;
 
-    if constexpr (has_uintxx_v<num_bits * 2>) {
+    if constexpr (has_native_uintxx_v<num_bits * 2>) {
         // We can use a native type that has double the size.
         using U = make_uintxx_t<num_bits * 2>;
 

@@ -7,14 +7,18 @@
 
 #pragma once
 
-#include "cast.hpp"
-#include "memory.hpp"
+#include "utility/module.hpp"
 #include <bit>
 #include <new>
 #include <cstddef>
 #include <memory>
 #include <algorithm>
 #include <iterator>
+
+hi_warning_push();
+// C26450: You called an STL function '' with raw pointer... (stl.1)
+// Using an iterator requires a lot of code which will not make it safer.
+hi_warning_ignore_msvc(26459);
 
 namespace hi { inline namespace v1 {
 
@@ -37,6 +41,8 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using allocator_type = std::allocator<value_type>;
+
+    constexpr static size_t value_alignment = alignof(value_type);
 
     /** The allocator_type used to allocate items.
      */
@@ -80,7 +86,7 @@ public:
      *
      * @param other The vector to move.
      */
-    lean_vector(lean_vector&& other) noexcept
+    lean_vector(lean_vector&& other) noexcept(std::is_nothrow_move_constructible_v<value_type>)
     {
         if (other._is_short()) {
             hilet other_size = other._short_size();
@@ -720,7 +726,8 @@ public:
      * This function will not change the allocation and iterators up
      * to the erased items remain valid.
      *
-     * @param pos An iterator pointing to the item to be removed.
+     * @param first An iterator pointing to the first item to be removed.
+     * @param last An iterator pointing beyond the last item to be removed.
      * @return An iterator to the item after the removed items, or end().
      */
     iterator erase(const_iterator first, const_iterator last)
@@ -929,13 +936,13 @@ private:
 
     [[nodiscard]] pointer _short_data() const noexcept
     {
-        static_assert(alignof(T) <= alignof(T *));
+        static_assert(alignof(value_type) <= alignof(pointer));
 
         void *p = const_cast<lean_vector *>(this);
         if constexpr (std::endian::native == std::endian::little) {
             p = ceil(advance_bytes(p, 1), alignof(value_type));
         }
-        return std::launder(reinterpret_cast<pointer>(p));
+        return std::launder(static_cast<pointer>(p));
     }
 
     [[nodiscard]] pointer _long_data() const noexcept
@@ -1083,3 +1090,5 @@ template<std::input_iterator It, std::input_iterator ItEnd>
 lean_vector(It first, ItEnd last) -> lean_vector<typename std::iterator_traits<It>::value_type>;
 
 }} // namespace hi::v1
+
+hi_warning_pop();

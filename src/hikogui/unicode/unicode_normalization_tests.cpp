@@ -6,7 +6,7 @@
 #include "../file/file_view.hpp"
 #include "../strings.hpp"
 #include "../generator.hpp"
-#include "../charconv.hpp"
+#include "../utility/module.hpp"
 #include <gtest/gtest.h>
 #include <iostream>
 #include <string>
@@ -57,7 +57,7 @@ std::u32string parseNormalizationTest_column(std::string_view column)
 
     auto codePointStrings = split_view(column);
     for (hilet codePointString : codePointStrings) {
-        r += static_cast<char32_t>(from_string<uint32_t>(codePointString, 16));
+        r += char_cast<char32_t>(from_string<uint32_t>(codePointString, 16));
     }
     return r;
 }

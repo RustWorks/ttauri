@@ -17,7 +17,6 @@
 #include "line_segment.hpp"
 #include "corner_radii.hpp"
 #include "axis_aligned_rectangle.hpp"
-#include "../color/color.hpp"
 #include <array>
 
 namespace hi {
@@ -53,10 +52,10 @@ public:
 
     /** Construct a matrix from four columns.
      *
-     * @param col0 The 1st `f32x4 column.
-     * @param col1 The 2nd `f32x4 column.
-     * @param col2 The 3rd `f32x4 column.
-     * @param col3 The 4th `f32x4 column.
+     * @param col0 The 1st `f32x4` column.
+     * @param col1 The 2nd `f32x4` column.
+     * @param col2 The 3rd `f32x4` column.
+     * @param col3 The 4th `f32x4` column.
      */
     constexpr matrix(f32x4 col0, f32x4 col1, f32x4 col2, f32x4 col3 = f32x4{0.0f, 0.0f, 0.0f, 1.0f}) noexcept :
         _col0(col0), _col1(col1), _col2(col2), _col3(col3)
@@ -65,10 +64,10 @@ public:
 
     /** Construct a matrix from four vectors.
      *
-     * @param col0 The 1st `f32x4 column.
-     * @param col1 The 2nd `f32x4 column.
-     * @param col2 The 3rd `f32x4 column.
-     * @param col3 The 4th `f32x4 column.
+     * @param col0 The 1st `vector3` column.
+     * @param col1 The 2nd `vector3` column.
+     * @param col2 The 3rd `vector3` column.
+     * @param col3 The 4th `vector3` column.
      */
     constexpr matrix(vector3 col0, vector3 col1, vector3 col2, vector3 col3 = vector3{}) noexcept
         requires(D == 3)
@@ -77,6 +76,21 @@ public:
         _col1(static_cast<f32x4>(col1)),
         _col2(static_cast<f32x4>(col2)),
         _col3(static_cast<f32x4>(col3).xyz1())
+    {
+    }
+
+    /** Construct a matrix from four vectors.
+     *
+     * @param col0 The 1st `vector2` column.
+     * @param col1 The 2nd `vector2` column.
+     */
+    constexpr matrix(vector2 col0, vector2 col1) noexcept
+        requires(D == 2)
+        :
+        _col0(static_cast<f32x4>(col0)),
+        _col1(static_cast<f32x4>(col1)),
+        _col2(f32x4{0.0f, 0.0f, 1.0f, 0.0f}),
+        _col3(f32x4{0.0f, 0.0f, 0.0f, 1.0f})
     {
     }
 
@@ -287,10 +301,10 @@ public:
      * @return The transformed vector.
      */
     template<int E>
-    [[nodiscard]] constexpr auto operator*(vector<E> const& rhs) const noexcept
+    [[nodiscard]] constexpr auto operator*(vector<float, E> const& rhs) const noexcept
     {
         hi_axiom(rhs.holds_invariant());
-        return vector<std::max(D, E)>{
+        return vector<float, std::max(D, E)>{
             _col0 * static_cast<f32x4>(rhs).xxxx() + _col1 * static_cast<f32x4>(rhs).yyyy() +
             _col2 * static_cast<f32x4>(rhs).zzzz()};
     }
@@ -303,10 +317,10 @@ public:
      * @return The transformed extent.
      */
     template<int E>
-    [[nodiscard]] constexpr auto operator*(extent<E> const& rhs) const noexcept
+    [[nodiscard]] constexpr auto operator*(extent<float, E> const& rhs) const noexcept
     {
         hi_axiom(rhs.holds_invariant());
-        return extent<std::max(D, E)>{
+        return extent<float, std::max(D, E)>{
             _col0 * static_cast<f32x4>(rhs).xxxx() + _col1 * static_cast<f32x4>(rhs).yyyy() +
             _col2 * static_cast<f32x4>(rhs).zzzz()};
     }
@@ -317,10 +331,10 @@ public:
      * @return The transformed point.
      */
     template<int E>
-    [[nodiscard]] constexpr auto operator*(point<E> const& rhs) const noexcept
+    [[nodiscard]] constexpr auto operator*(point<float, E> const& rhs) const noexcept
     {
         hi_axiom(rhs.holds_invariant());
-        return point<std::max(D, E)>{
+        return point<float, std::max(D, E)>{
             _col0 * static_cast<f32x4>(rhs).xxxx() + _col1 * static_cast<f32x4>(rhs).yyyy() +
             _col2 * static_cast<f32x4>(rhs).zzzz() + _col3 * static_cast<f32x4>(rhs).wwww()};
     }
@@ -380,25 +394,6 @@ public:
         return line_segment{*this * rhs.origin(), *this * rhs.direction()};
     }
 
-    /** Transform a color by a color matrix.
-     *
-     * The alpha value is not included in the transformation and copied from the input.
-     *
-     * @note It is undefined behavior if the matrix contains a translation.
-     * @param rhs The color to be transformed.
-     * @return The transformed color.
-     */
-    [[nodiscard]] constexpr auto operator*(color const& rhs) const noexcept
-    {
-        hi_axiom(rhs.holds_invariant());
-        auto r = color{
-            _col0 * static_cast<f32x4>(rhs).xxxx() + _col1 * static_cast<f32x4>(rhs).yyyy() +
-            _col2 * static_cast<f32x4>(rhs).zzzz() + _col3};
-
-        r.a() = rhs.a();
-        return r;
-    }
-
     /** Matrix/Matrix multiplication.
      */
     [[nodiscard]] constexpr auto operator*(matrix const& rhs) const noexcept
@@ -445,7 +440,7 @@ public:
      * @tparam DstY Which of the original axis to use for the new matrix's y-axis.
      * @tparam DstZ Which of the original axis to use for the new matrix's z-axis.
      * @tparam DstW Which of the original axis to use for the new matrix's w-axis.
-     * @param The matrix to reflect
+     * @param rhs The matrix to reflect
      * @return The reflected matrix.
      */
     template<char DstX, char DstY, char DstZ, char DstW = 'w'>

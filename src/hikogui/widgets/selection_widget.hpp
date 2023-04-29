@@ -37,7 +37,7 @@ concept selection_widget_attribute = label_widget_attribute<Context>;
  * the `option_list`. At application startup, value is zero and none
  * of the options is selected:
  *
- * @snippet widgets/selection_example.cpp Create selection
+ * @snippet widgets/selection_example_impl.cpp Create selection
  *
  * @ingroup widgets
  */
@@ -70,7 +70,7 @@ public:
      *  - `alignment::middle_center`: text drawn across a large icon. Should only be
      *    used with a `pixmap` icon.
      */
-    observer<alignment> alignment = hi::alignment::top_right();
+    observer<alignment> alignment = hi::alignment::middle_flush();
 
     /** The text style to display the label's text in and color of the label's (non-color) icon.
      */
@@ -171,12 +171,12 @@ public:
     }
 
     /// @privatesection
-    [[nodiscard]] generator<widget *> children() const noexcept override;
-    widget_constraints const& set_constraints(set_constraints_context const& context) noexcept override;
+    [[nodiscard]] generator<widget const &> children(bool include_invisible) const noexcept override;
+    [[nodiscard]] box_constraints update_constraints() noexcept override;
     void set_layout(widget_layout const& context) noexcept override;
     void draw(draw_context const& context) noexcept override;
     bool handle_event(gui_event const& event) noexcept override;
-    [[nodiscard]] hitbox hitbox_test(point3 position) const noexcept override;
+    [[nodiscard]] hitbox hitbox_test(point2i position) const noexcept override;
     [[nodiscard]] bool accepts_keyboard_focus(keyboard_focus_group group) const noexcept override;
     [[nodiscard]] color focus_color() const noexcept override;
     /// @endprivatesection
@@ -185,19 +185,25 @@ private:
     std::atomic<bool> _notification_from_delegate = true;
 
     std::unique_ptr<label_widget> _current_label_widget;
-    std::unique_ptr<label_widget> _off_label_widget;
+    box_constraints _current_label_constraints;
+    box_shape _current_label_shape;
 
-    aarectangle _option_rectangle;
-    aarectangle _left_box_rectangle;
+    std::unique_ptr<label_widget> _off_label_widget;
+    box_constraints _off_label_constraints;
+    box_shape _off_label_shape;
+
+    aarectanglei _left_box_rectangle;
 
     glyph_ids _chevrons_glyph;
-    aarectangle _chevrons_rectangle;
+    aarectanglei _chevrons_rectangle;
 
     bool _selecting = false;
     bool _has_options = false;
 
-    aarectangle _overlay_rectangle;
     std::unique_ptr<overlay_widget> _overlay_widget;
+    box_constraints _overlay_constraints;
+    box_shape _overlay_shape;
+
     vertical_scroll_widget *_scroll_widget = nullptr;
     column_widget *_column_widget = nullptr;
 

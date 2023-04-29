@@ -11,8 +11,9 @@
 namespace hi {
 inline namespace v1 {
 
-/** The 4 radiuses of the corners of a quad or rectangle.
- * @ingroup geometry.
+/** The 4 radii of the corners of a quad or rectangle.
+ * 
+ * @ingroup geometry
  */
 class corner_radii {
 public:
@@ -25,7 +26,7 @@ public:
     [[nodiscard]] constexpr corner_radii(float radius) noexcept : _v(radius, radius, radius, radius) {}
     [[nodiscard]] constexpr corner_radii(float lb, float rb, float lt, float rt) noexcept : _v(lb, rb, lt, rt) {}
 
-    /** Construct a corner_radii from a numeric_array.
+    /** Construct a corner_radii from a simd.
      *
      * @param v The 4 radii, x=left-bottom, y=right-bottom, z=left-top, w=right-top.
      */

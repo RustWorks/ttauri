@@ -4,19 +4,16 @@
 
 #pragma once
 
-#include "font_variant.hpp"
 #include "text_decoration.hpp"
-#include "font_family_id.hpp"
 #include "text_phrasing.hpp"
 #include "semantic_text_style.hpp"
-#include "../color/color.hpp"
+#include "../color/module.hpp"
 #include "../i18n/iso_15924.hpp"
 #include "../i18n/iso_639.hpp"
-#include "../numbers.hpp"
+#include "../utility/module.hpp"
+#include "../font/module.hpp"
 #include "../log.hpp"
 #include "../stable_set.hpp"
-#include "../cast.hpp"
-#include "../assert.hpp"
 #include <ostream>
 #include <vector>
 #include <algorithm>
@@ -72,6 +69,7 @@ struct text_sub_style {
     }
 
     [[nodiscard]] float cap_height(font_book const& font_book) const noexcept;
+    [[nodiscard]] float x_height(font_book const& font_book) const noexcept;
 
     [[nodiscard]] bool matches(text_phrasing phrasing, iso_639 language, iso_15924 script) const noexcept
     {
@@ -177,6 +175,11 @@ public:
     using int_type = uint16_t;
 
     constexpr text_style() : _value(0xffff) {}
+    constexpr text_style(text_style const&) noexcept = default;
+    constexpr text_style(text_style&&) noexcept = default;
+    constexpr text_style& operator=(text_style const&) noexcept = default;
+    constexpr text_style& operator=(text_style&&) noexcept = default;
+    [[nodiscard]] constexpr friend bool operator==(text_style const&, text_style const&) noexcept = default;
 
     constexpr text_style(semantic_text_style rhs) noexcept : _value(0xff00 + to_underlying(rhs)) {}
 

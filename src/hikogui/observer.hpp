@@ -6,8 +6,7 @@
 
 #include "observable_value.hpp"
 #include "observable.hpp"
-#include "type_traits.hpp"
-#include "concepts.hpp"
+#include "utility/module.hpp"
 
 namespace hi::inline v1 {
 
@@ -63,13 +62,15 @@ public:
         _proxy(_proxy const&) = delete;
         _proxy& operator=(_proxy const&) = delete;
 
-        _proxy(_proxy const& other) noexcept requires(not is_writing) :
-            _observer(other._observer), _base(other._base), _value(other._value)
+        _proxy(_proxy const& other) noexcept
+            requires(not is_writing)
+            : _observer(other._observer), _base(other._base), _value(other._value)
         {
             _observer->read_lock();
         }
 
-        _proxy& operator=(_proxy const& other) noexcept requires(not is_writing)
+        _proxy& operator=(_proxy const& other) noexcept
+            requires(not is_writing)
         {
             _commit();
             _observer = other._observer;
@@ -509,7 +510,8 @@ public:
      * @param index The index into the value being observed.
      * @return A new sub-observer which monitors the selected sub-value.
      */
-    [[nodiscard]] auto get(auto const& index) const noexcept requires(requires() { std::declval<value_type>()[index]; })
+    [[nodiscard]] auto get(auto const& index) const noexcept
+        requires(requires() { std::declval<value_type>()[index]; })
     {
         using result_type = std::decay_t<decltype(std::declval<value_type>()[index])>;
 
@@ -691,7 +693,7 @@ private:
     std::function<void *(void *)> _convert = {};
     notifier_type _notifier;
 #ifndef NDEBUG
-    value_type _value;
+    value_type _debug_value;
 #endif
 
     /** Construct an observer from an observable.
@@ -747,17 +749,23 @@ private:
     void update_state_callback() noexcept
     {
         _observed.subscribe([this](observable_msg const& msg) {
-            auto [msg_it, this_it] = std::mismatch(msg.path.cbegin(), msg.path.cend(), _path.cbegin(), _path.cend());
+            hilet [msg_it, this_it] = std::mismatch(msg.path.cbegin(), msg.path.cend(), _path.cbegin(), _path.cend());
             // If the message's path is fully within the this' path, then this is a sub-path.
             // If this' path is fully within the message's path, then this is along the path.
             if (msg_it == msg.path.cend() or this_it == _path.cend()) {
 #ifndef NDEBUG
-                _notifier(_value = *convert(msg.ptr));
+                _notifier(_debug_value = *convert(msg.ptr));
 #else
                 _notifier(*convert(msg.ptr));
 #endif
             }
         });
+
+#ifndef NDEBUG
+        _observed->read_lock();
+        _debug_value = *convert(_observed->read());
+        _observed->read_unlock();
+#endif
     }
 
     // It is possible to make sub-observables.
@@ -795,7 +803,6 @@ using observer_decay_t = observer_decay<T>::type;
 
 template<typename Context, typename Expected>
 struct is_forward_of<Context, observer<Expected>> :
-    std::conditional_t<std::is_convertible_v<Context, observer<Expected>>, std::true_type, std::false_type> {
-};
+    std::conditional_t<std::is_convertible_v<Context, observer<Expected>>, std::true_type, std::false_type> {};
 
 } // namespace hi::inline v1

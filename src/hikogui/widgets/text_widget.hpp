@@ -14,11 +14,11 @@
 #include "../text/semantic_text_style.hpp"
 #include "../text/text_selection.hpp"
 #include "../text/text_shaper.hpp"
-#include "../observer.hpp"
-#include "../alignment.hpp"
+#include "../geometry/module.hpp"
 #include "../i18n/translate.hpp"
 #include "../undo_stack.hpp"
 #include "../scoped_task.hpp"
+#include "../observer.hpp"
 #include <memory>
 #include <string>
 #include <array>
@@ -67,7 +67,7 @@ public:
 
     /** The horizontal alignment of the text inside the space of the widget.
      */
-    observer<alignment> alignment = hi::alignment::middle_center();
+    observer<alignment> alignment = hi::alignment::top_flush();
 
     /** The style of the text.
      */
@@ -106,11 +106,11 @@ public:
     } : text_widget(parent, make_default_text_delegate(hi_forward(text)), hi_forward(attributes)...) {}
 
     /// @privatesection
-    widget_constraints const& set_constraints(set_constraints_context const &context) noexcept override;
+    [[nodiscard]] box_constraints update_constraints() noexcept override;
     void set_layout(widget_layout const& context) noexcept override;
     void draw(draw_context const& context) noexcept override;
     bool handle_event(gui_event const& event) noexcept override;
-    hitbox hitbox_test(point3 position) const noexcept override;
+    hitbox hitbox_test(point2i position) const noexcept override;
     [[nodiscard]] bool accepts_keyboard_focus(keyboard_focus_group group) const noexcept override;
     /// @endprivatesection
 private:
@@ -123,9 +123,10 @@ private:
 
     enum class cursor_state_type { off, on, busy, none };
 
-    gstring _cached_text;
+    gstring _text_cache;
     text_shaper _shaped_text;
-    float _base_line;
+
+    mutable box_constraints _constraints_cache;
 
     delegate_type::callback_token _delegate_cbt;
 

@@ -120,7 +120,7 @@ public:
         ssize_t byteNr = 0;
         ssize_t i = 0;
         while (packetNr < nrpackets()) {
-            hi_parse_check(byteNr < nrBytes, "New-line not found within {} bytes", nrBytes);
+            hi_check(byteNr < nrBytes, "New-line not found within {} bytes", nrBytes);
 
             if (i == ssize(packets[packetNr])) {
                 // Advance to next packet.
@@ -132,7 +132,7 @@ public:
             {
                 // Found end-of-line
                 hilet bspan = peek(byteNr + 1);
-                return {reinterpret_cast<char *>(bspan.data(), byteNr + 1};
+                return {reinterpret_cast<char *>(bspan.data()), byteNr + 1};
             }
             ++i;
             ++byteNr;

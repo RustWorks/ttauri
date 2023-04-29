@@ -4,9 +4,7 @@
 
 #pragma once
 
-#include "utility.hpp"
-#include "memory.hpp"
-#include "math.hpp"
+#include "utility/module.hpp"
 #include <cstddef>
 #include <climits>
 #include <concepts>
@@ -69,7 +67,7 @@ public:
      * If possible this function will use `load()` to do an efficient unaligned
      * load from memory.
      *
-     * @note It is undefined behavior if @i is out-of-bound.
+     * @note It is undefined behavior if @a i is out-of-bound.
      * @param i An index into the array.
      * @return The unsigned integer retrieved from the array.
      */
@@ -81,7 +79,7 @@ public:
         hilet byte_offset = offset / CHAR_BIT;
         hilet bit_offset = offset % CHAR_BIT;
 
-        return (load<value_type>(_v.data() + byte_offset) >> bit_offset) & mask;
+        return (unaligned_load<value_type>(_v.data() + byte_offset) >> bit_offset) & mask;
     }
 
     /** Get the integer at an index.
@@ -89,7 +87,7 @@ public:
      * If possible this function will use `load()` to do an efficient unaligned
      * load from memory.
      *
-     * @note It is undefined behavior if @I is out-of-bound.
+     * @note It is undefined behavior if @a I is out-of-bound.
      * @tparam I An index into the array.
      * @param rhs The packed int array to read from.
      * @return The unsigned integer retrieved from the array.
@@ -134,7 +132,7 @@ private:
 
             hilet arg = args_[i];
             hi_axiom(arg <= mask);
-            store_or(static_cast<value_type>(arg << bit_offset), r.data() + byte_offset);
+            store_or(arg << bit_offset, r.data() + byte_offset);
         }
 
         return r;

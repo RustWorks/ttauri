@@ -12,6 +12,11 @@
 #include "cp_1252.hpp"
 #include <bit>
 
+hi_warning_push();
+// C26490: Don't use reinterpret_cast.
+// Needed for SIMD intrinsics.
+hi_warning_ignore_msvc(26490);
+
 namespace hi { inline namespace v1 {
 
 /** Unicode UTF-8 encoding.
@@ -52,8 +57,7 @@ struct char_map<"utf-8"> {
             return read_fallback(it, last);
 
         } else {
-            auto length = narrow_cast<uint8_t>(std::countl_one(char_cast<uint8_t>(cu)));
-            auto todo = length - 2;
+            hilet length = narrow_cast<uint8_t>(std::countl_one(char_cast<uint8_t>(cu)));
             hi_axiom(length >= 2);
 
             // First part of the code-point.
@@ -68,8 +72,11 @@ struct char_map<"utf-8"> {
                 // code-unit as if it was CP-1252.
                 it -= 2;
                 return read_fallback(it, last);
+            }
 
-            } else if (todo >= std::distance(it, last)) [[unlikely]] {
+            // After we read the first two code-units how many more to do.
+            auto todo = length - 2;
+            if (todo > std::distance(it, last)) [[unlikely]] {
                 // If there is a start and a continuation code-unit in a row we consider this to be UTF-8 encoded.
                 // So at this point any errors are replaced with 0xfffd.
                 it = last;
@@ -99,7 +106,7 @@ struct char_map<"utf-8"> {
             }
             return {cp, true};
         }
-    };
+    }
 
     [[nodiscard]] constexpr std::pair<uint8_t, bool> size(char32_t code_point) const noexcept
     {
@@ -115,7 +122,7 @@ struct char_map<"utf-8"> {
         hi_axiom(code_point < 0x11'0000);
         hi_axiom(not(code_point >= 0xd800 and code_point < 0xe000));
 
-        auto length = truncate<uint8_t>((code_point > 0x7f) + (code_point > 0x7ff) + (code_point > 0xffff));
+        hilet length = truncate<uint8_t>((code_point > 0x7f) + (code_point > 0x7ff) + (code_point > 0xffff));
         if (auto i = length) {
             do {
                 dst[i] = truncate<char8_t>((code_point & 0x3f) | 0x80);
@@ -125,7 +132,7 @@ struct char_map<"utf-8"> {
             code_point |= 0x780 >> length;
         }
         dst[0] = truncate<char8_t>(code_point);
-        dst += length + 1;
+        dst += length + 1_uz;
     }
 
 #if defined(HI_HAS_SSE2)
@@ -144,3 +151,5 @@ struct char_map<"utf-8"> {
 };
 
 }} // namespace hi::v1
+
+hi_warning_pop();

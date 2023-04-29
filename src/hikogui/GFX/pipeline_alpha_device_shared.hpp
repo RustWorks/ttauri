@@ -4,12 +4,10 @@
 
 #pragma once
 
-#include "../utility.hpp"
-#include "../geometry/rectangle.hpp"
+#include "../utility/module.hpp"
+#include "../geometry/module.hpp"
 #include "../vector_span.hpp"
-#include "../color/color.hpp"
-#include "../color/quad_color.hpp"
-#include "../geometry/corner_radii.hpp"
+#include "../color/module.hpp"
 #include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.hpp>
 #include <mutex>
@@ -39,15 +37,15 @@ struct device_shared final {
     /*! Deallocate vulkan resources.
      * This is called in the destructor of gfx_device_vulkan, therefor we can not use our `device`.
      */
-    void destroy(gfx_device_vulkan *vulkanDevice);
+    void destroy(gfx_device_vulkan const*vulkanDevice);
 
-    void drawInCommandBuffer(vk::CommandBuffer& commandBuffer);
+    void drawInCommandBuffer(vk::CommandBuffer const& commandBuffer);
 
     static void place_vertices(vector_span<vertex>& vertices, aarectangle clipping_rectangle, quad box, float alpha);
 
 private:
     void buildShaders();
-    void teardownShaders(gfx_device_vulkan *vulkanDevice);
+    void teardownShaders(gfx_device_vulkan const*vulkanDevice);
 };
 
 } // namespace pipeline_alpha

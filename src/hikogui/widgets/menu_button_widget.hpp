@@ -47,7 +47,7 @@ public:
         button_widget_attribute auto&&...attributes) noexcept :
         super(parent, std::move(delegate))
     {
-        alignment = alignment::middle_left();
+        alignment = alignment::middle_flush();
         set_attributes<0>(hi_forward(attributes)...);
     }
 
@@ -80,19 +80,21 @@ public:
     }
 
     /// @privatesection
-    widget_constraints const& set_constraints(set_constraints_context const& context) noexcept override;
+    [[nodiscard]] box_constraints update_constraints() noexcept override;
     void set_layout(widget_layout const& context) noexcept override;
     void draw(draw_context const& context) noexcept override;
     [[nodiscard]] bool accepts_keyboard_focus(keyboard_focus_group group) const noexcept override;
     bool handle_event(gui_event const& event) noexcept override;
     /// @endprivatesection
 private:
+    box_constraints _label_constraints;
+
     glyph_ids _check_glyph;
-    extent2 _check_size;
-    aarectangle _check_rectangle;
-    aarectangle _check_glyph_rectangle;
-    extent2 _short_cut_size;
-    aarectangle _short_cut_rectangle;
+    extent2i _check_size;
+    aarectanglei _check_rectangle;
+    aarectanglei _check_glyph_rectangle;
+    extent2i _short_cut_size;
+    aarectanglei _short_cut_rectangle;
 
     void draw_menu_button(draw_context const& context) noexcept;
     void draw_check_mark(draw_context const& context) noexcept;

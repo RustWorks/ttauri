@@ -42,11 +42,11 @@ public:
     audio_device_widget(widget *parent, hi::audio_system& audio_system) noexcept;
 
     /// @privatesection
-    [[nodiscard]] generator<widget *> children() const noexcept override;
-    widget_constraints const& set_constraints(set_constraints_context const& context) noexcept override;
+    [[nodiscard]] generator<widget const &> children(bool include_invisible) const noexcept override;
+    [[nodiscard]] box_constraints update_constraints() noexcept override;
     void set_layout(widget_layout const& context) noexcept override;
     void draw(draw_context const& context) noexcept override;
-    hitbox hitbox_test(point3 position) const noexcept override;
+    hitbox hitbox_test(point2i position) const noexcept override;
     [[nodiscard]] bool accepts_keyboard_focus(keyboard_focus_group group) const noexcept override;
     /// @endprivatesection
 private:
@@ -55,8 +55,8 @@ private:
     /** The grid widget contains all the child widgets.
      */
     std::unique_ptr<grid_widget> _grid_widget;
-
-    aarectangle _grid_rectangle;
+    box_constraints _grid_constraints;
+    box_shape _grid_shape;
 
     /** The widget used to select the audio device.
      */

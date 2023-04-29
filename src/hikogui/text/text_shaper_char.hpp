@@ -5,13 +5,10 @@
 #pragma once
 
 #include "text_style.hpp"
-#include "glyph_ids.hpp"
-#include "glyph_metrics.hpp"
-#include "font.hpp"
+#include "../font/module.hpp"
 #include "../unicode/unicode_description.hpp"
 #include "../unicode/grapheme.hpp"
-#include "../geometry/point.hpp"
-#include "../geometry/axis_aligned_rectangle.hpp"
+#include "../geometry/module.hpp"
 
 namespace hi::inline v1 {
 class font_book;
@@ -134,7 +131,7 @@ public:
      * @note The glyph is only initialized when `glyph_is_initial == false`.
      * @post `glyph`, `metrics` and `width` are modified. `glyph_is_initial` is set to true.
      */
-    void initialize_glyph(hi::font_book &font_book, hi::font const &font) noexcept;
+    void initialize_glyph(hi::font_book const &font_book, hi::font const &font) noexcept;
 
     /** Initialize the glyph based on the grapheme.
      *
@@ -158,17 +155,6 @@ public:
     [[nodiscard]] hi::font_metrics font_metrics() const noexcept
     {
         return scale * glyph.font().metrics;
-    }
-
-    [[nodiscard]] vector2 get_kerning(text_shaper_char const &next) const noexcept
-    {
-        if (&(glyph.font()) != &(next.glyph.font()) or scale != next.scale or not glyph.has_num_glyphs<1>() or
-            not next.glyph.has_num_glyphs<1>()) {
-            return vector2{};
-        } else {
-            hilet kerning = glyph.font().get_kerning(glyph.get_single(), next.glyph.get_single());
-            return scale * kerning;
-        }
     }
 
     [[nodiscard]] friend bool operator==(text_shaper_char const &lhs, char32_t const &rhs) noexcept

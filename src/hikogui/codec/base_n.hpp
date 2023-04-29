@@ -5,10 +5,7 @@
 #pragma once
 
 #include "../byte_string.hpp"
-#include "../utility.hpp"
-#include "../assert.hpp"
-#include "../cast.hpp"
-#include "../check.hpp"
+#include "../utility/module.hpp"
 #include <span>
 #include <cstdint>
 #include <array>
@@ -240,7 +237,7 @@ public:
     {
         auto r = bstring{};
         auto i = decode(begin(str), end(str), std::back_inserter(r));
-        hi_parse_check(i == end(str), "base-n encoded string not completely decoded");
+        hi_check(i == end(str), "base-n encoded string not completely decoded");
         return r;
     }
 

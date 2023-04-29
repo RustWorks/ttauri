@@ -5,11 +5,13 @@
 #include "unicode_word_break.hpp"
 #include "unicode_sentence_break.hpp"
 #include "unicode_line_break.hpp"
+#include "unicode_text_segmentation.hpp"
 #include "unicode_description.hpp"
 #include "../file/file_view.hpp"
 #include "../strings.hpp"
 #include "../generator.hpp"
 #include "../ranges.hpp"
+#include "../utility/module.hpp"
 #include <gtest/gtest.h>
 #include <iostream>
 #include <string>
@@ -50,8 +52,8 @@ static std::optional<test_type> parse_test_line(std::string_view line, int line_
         } else if (column == "\xc3\x97") {
             r.expected.push_back(hi::unicode_break_opportunity::no);
         } else {
-            auto code_point = static_cast<char32_t>(std::stoi(std::string(column), nullptr, 16));
-            r.code_points += code_point;
+            auto const code_point = std::stoi(std::string(column), nullptr, 16);
+            r.code_points += hi::char_cast<char32_t>(code_point);
         }
     }
 
@@ -75,9 +77,18 @@ static hi::generator<test_type> parse_tests(std::string_view filename)
 
 } // namespace
 
+TEST(unicode_break, grapheme_break)
+{
+    for (hilet& test : parse_tests("GraphemeBreakTest.txt")) {
+        hilet result = hi::unicode_grapheme_break(test.code_points.begin(), test.code_points.end());
+
+        ASSERT_EQ(test.expected, result) << test.comment;
+    }
+}
+
 TEST(unicode_break, word_break)
 {
-    for (hilet &test : parse_tests("WordBreakTest.txt")) {
+    for (hilet& test : parse_tests("WordBreakTest.txt")) {
         hilet result =
             hi::unicode_word_break(test.code_points.begin(), test.code_points.end(), [](hilet code_point) -> decltype(auto) {
                 return hi::unicode_description::find(code_point);
@@ -89,7 +100,7 @@ TEST(unicode_break, word_break)
 
 TEST(unicode_break, sentence_break)
 {
-    for (hilet &test : parse_tests("SentenceBreakTest.txt")) {
+    for (hilet& test : parse_tests("SentenceBreakTest.txt")) {
         hilet result =
             hi::unicode_sentence_break(test.code_points.begin(), test.code_points.end(), [](hilet code_point) -> decltype(auto) {
                 return hi::unicode_description::find(code_point);
@@ -101,14 +112,14 @@ TEST(unicode_break, sentence_break)
 
 TEST(unicode_break, line_break)
 {
-    for (hilet &test : parse_tests("LineBreakTest.txt")) {
+    for (hilet& test : parse_tests("LineBreakTest.txt")) {
         auto result =
             hi::unicode_line_break(test.code_points.begin(), test.code_points.end(), [](hilet code_point) -> decltype(auto) {
                 return hi::unicode_description::find(code_point);
             });
 
         // The algorithm produces mandatory-break in the result, but LineBreakTest.txt only has break/no-break.
-        for (auto &x : result) {
+        for (auto& x : result) {
             if (x == hi::unicode_break_opportunity::mandatory) {
                 x = hi::unicode_break_opportunity::yes;
             }

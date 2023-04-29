@@ -5,26 +5,17 @@
 
 target_sources(hikogui PRIVATE
     file.hpp
-    $<$<PLATFORM_ID:Linux,Darwin>:${CMAKE_CURRENT_SOURCE_DIR}/file_posix.cpp>
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/file_win32.cpp>
+    $<$<PLATFORM_ID:Linux,Darwin>:${CMAKE_CURRENT_SOURCE_DIR}/file_posix_impl.cpp>
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/file_win32_impl.cpp>
     $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/file_win32.hpp>
     file_view.hpp
-    $<$<PLATFORM_ID:Linux,Darwin>:${CMAKE_CURRENT_SOURCE_DIR}/file_view_posix.cpp>
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/file_view_win32.cpp>
+    $<$<PLATFORM_ID:Linux,Darwin>:${CMAKE_CURRENT_SOURCE_DIR}/file_view_posix_impl.cpp>
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/file_view_win32_impl.cpp>
     glob.hpp
     path_location.hpp
     $<$<PLATFORM_ID:Darwin>:${CMAKE_CURRENT_SOURCE_DIR}/path_location_macos.mm>
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/path_location_win32.cpp>
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/path_location_win32_impl.cpp>
     resource_view.hpp
     URI.hpp
     URL.hpp
 )
-
-if(BUILD_TESTING)
-    target_sources(hikogui_tests PRIVATE
-        file_view_tests.cpp
-        glob_tests.cpp
-        URI_tests.cpp
-        URL_tests.cpp
-    )
-endif()

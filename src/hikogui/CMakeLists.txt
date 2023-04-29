@@ -4,73 +4,55 @@
 # (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
 add_subdirectory(audio)
-add_subdirectory(char_maps)
 add_subdirectory(codec)
-add_subdirectory(color)
 add_subdirectory(file)
 add_subdirectory(formula)
-add_subdirectory(geometry)
+add_subdirectory(layout)
 add_subdirectory(GFX)
 add_subdirectory(GUI)
 add_subdirectory(i18n)
 add_subdirectory(random)
-add_subdirectory(rapid)
 add_subdirectory(skeleton)
 add_subdirectory(text)
 add_subdirectory(unicode)
 add_subdirectory(widgets)
 
-configure_file(metadata.cpp.in metadata.cpp @ONLY)
+configure_file(metadata_impl.cpp.in metadata_impl.cpp @ONLY)
 
 target_sources(hikogui PRIVATE
-    alignment.hpp
     algorithm.hpp
     arguments.hpp
     animator.hpp
-    assert.hpp
     atomic.hpp
     awaitable.hpp
-    awaitable_timer.cpp
+    awaitable_timer_impl.cpp
 	awaitable_timer.hpp
     bezier.hpp
-    bezier_curve.cpp
+    bezier_curve_impl.cpp
     bezier_curve.hpp
     bezier_point.hpp
     bigint.hpp
     bits.hpp
     bound_integer.hpp
     byte_string.hpp
+    cache.hpp
     callback_flags.hpp
-    cast.hpp
-    check.hpp
     chrono.hpp
-    concepts.hpp
     console.hpp
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/console_win32.cpp>
-    counters.cpp
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/console_win32_impl.cpp>
+    counters_impl.cpp
     counters.hpp
-    CP1252.hpp
     #cpu_id.hpp
-    #$<$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR}:AMD64>:${CMAKE_CURRENT_SOURCE_DIR}/cpu_id_x64.cpp>
+    #$<$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR}:AMD64>:${CMAKE_CURRENT_SOURCE_DIR}/cpu_id_x64_impl.cpp>
     crt.hpp
     crt_utils.hpp
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/crt_utils_win32.cpp>
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/crt_utils_win32_impl.cpp>
     datum.hpp
-    dead_lock_detector.cpp
-    dead_lock_detector.hpp
-    debugger.hpp
-    $<$<PLATFORM_ID:Darwin>:${CMAKE_CURRENT_SOURCE_DIR}/debugger_macos.mm>
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/debugger_win32.cpp>
     decimal.hpp
     defer.hpp
     dialog.hpp
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/dialog_win32.cpp>
-    endian.hpp
-    enum_metadata.hpp
-    exception.cpp
-    exception.hpp
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/dialog_win32_impl.cpp>
     fixed.hpp
-    float16.hpp
     format_check.hpp
     forward_value.hpp
 	functional.hpp
@@ -78,8 +60,6 @@ target_sources(hikogui PRIVATE
 	function_timer.hpp
     gap_buffer.hpp
     generator.hpp
-    global_state.hpp
-    hash.hpp
     hash_map.hpp
     huffman.hpp
     int_carry.hpp
@@ -89,51 +69,42 @@ target_sources(hikogui PRIVATE
     label.hpp
     lean_vector.hpp
     locked_memory_allocator.hpp
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/locked_memory_allocator_win32.cpp>
-    log.cpp
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/locked_memory_allocator_win32_impl.cpp>
+    log_impl.cpp
     log.hpp
     $<$<PLATFORM_ID:Darwin>:${CMAKE_CURRENT_SOURCE_DIR}/log_macos.mm>
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/log_win32.cpp>
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/log_win32_impl.cpp>
     long_tagged_id.hpp
 	loop.hpp
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/loop_win32.cpp>
-    math.hpp
-    memory.hpp
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/loop_win32_impl.cpp>
     group_ptr.hpp
     meta.hpp
-    ${CMAKE_CURRENT_BINARY_DIR}/metadata.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/metadata_impl.cpp
     metadata.hpp
-    numbers.hpp
     notifier.hpp
-    cast.hpp
     observable.hpp
     observable_value.hpp
     observer.hpp
     operator.hpp
-    os_settings.cpp
+    os_settings_impl.cpp
     os_settings.hpp
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/os_settings_win32.cpp>
-    architecture.hpp
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/os_settings_win32_impl.cpp>
     packed_int_array.hpp
     parse_location.hpp
-    preferences.cpp
+    preferences_impl.cpp
     preferences.hpp
-    graphic_path.cpp
+    graphic_path_impl.cpp
     graphic_path.hpp
     pickle.hpp
-    pixel_map.cpp
-    pixel_map.hpp
-    pixel_map.inl
     placement.hpp
     polymorphic_optional.hpp
     polynomial.hpp
     range_map.hpp
     ranges.hpp
-    rcu.hpp
     recursive_iterator.hpp
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/registry_win32.cpp>
+    reflection.hpp
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/registry_win32_impl.cpp>
     $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/registry_win32.hpp>
-    utility.hpp
     range_map.hpp
     safe_int.hpp
     semantic_version.hpp
@@ -145,81 +116,26 @@ target_sources(hikogui PRIVATE
     small_vector.hpp
     stack.hpp
     strings.hpp
-    subsystem.hpp
     tag.hpp
     tagged_id.hpp
     tagged_map.hpp
     task.hpp
-    $<$<PLATFORM_ID:Darwin>:${CMAKE_CURRENT_SOURCE_DIR}/thread_macos.cpp>
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/thread_win32.cpp>
-    thread.cpp
-    thread.hpp
-    time_stamp_count.cpp
+    terminate_impl.cpp
+    terminate.hpp
+    time_stamp_count_impl.cpp
     time_stamp_count.hpp
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/time_stamp_count_win32.cpp>
-    time_stamp_utc.cpp
+    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/time_stamp_count_win32_impl.cpp>
+    time_stamp_utc_impl.cpp
     time_stamp_utc.hpp
-    tokenizer.cpp
+    tokenizer_impl.cpp
     tokenizer.hpp
-    trace.cpp
+    trace_impl.cpp
     trace.hpp
     tree.hpp
-    type_traits.hpp
     undo_stack.hpp
-    unfair_mutex.hpp
-    unfair_recursive_mutex.hpp
     vector_span.hpp
     void_span.hpp
     when_any.hpp
     wfree_fifo.hpp
-    wfree_idle_count.hpp
     wfree_unordered_map.hpp
-    $<$<PLATFORM_ID:Windows>:${CMAKE_CURRENT_SOURCE_DIR}/win32_headers.hpp>
 )
-
-if(BUILD_TESTING)
-    target_sources(hikogui_tests PRIVATE
-        algorithm_tests.cpp
-        bezier_curve_tests.cpp
-        bigint_tests.cpp
-        bound_integer_tests.cpp
-        cast_tests.cpp
-        counters_tests.cpp
-        datum_tests.cpp
-        dead_lock_detector_tests.cpp
-        decimal_tests.cpp
-        defer_tests.cpp
-        enum_metadata_tests.cpp
-        exceptions_tests.cpp
-        fixed_string_tests.cpp
-        float16_tests.cpp
-        format_check_tests.cpp
-        forward_value_tests.cpp
-        gap_buffer_tests.cpp
-        generator_tests.cpp
-        interval_tests.cpp
-        int_carry_tests.cpp
-        int_overflow_tests.cpp
-        jsonpath_tests.cpp
-        lean_vector_tests.cpp
-        math_tests.cpp
-        group_ptr_tests.cpp
-        notifier_tests.cpp
-        graphic_path_tests.cpp
-        packed_int_array_tests.cpp
-        pixel_map_tests.cpp
-        polymorphic_optional_tests.cpp
-        polynomial_tests.cpp
-        ranges_tests.cpp
-        rcu_tests.cpp
-        safe_int_tests.cpp
-        shared_state_tests.cpp
-        sip_hash_tests.cpp
-        small_map_tests.cpp
-        strings_tests.cpp
-        tokenizer_tests.cpp
-        tree_tests.cpp
-        type_traits_tests.cpp
-    )
-endif()
-
