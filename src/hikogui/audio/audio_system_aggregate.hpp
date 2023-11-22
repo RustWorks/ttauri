@@ -2,13 +2,19 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
+#pragma once
+
 #include "audio_system.hpp"
-#include "../algorithm.hpp"
+#include "../algorithm/algorithm.hpp"
+#include "../macros.hpp"
 #include <algorithm>
+#include <coroutine>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.audio.audio_system_aggregate);
 
-class audio_system_aggregate : public audio_system {
+hi_export namespace hi { inline namespace v1 {
+
+hi_export class audio_system_aggregate : public audio_system {
 public:
     using super = audio_system;
 
@@ -36,10 +42,10 @@ public:
 private:
     struct child_type {
         std::unique_ptr<audio_system> system;
-        audio_system::callback_token cbt;
+        callback<void()> cbt;
     };
 
     std::vector<child_type> _children;
 };
 
-} // namespace hi::inline v1
+}} // namespace hi::inline v1

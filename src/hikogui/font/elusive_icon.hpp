@@ -4,9 +4,13 @@
 
 #pragma once
 
-namespace hi::inline v1 {
+#include "../macros.hpp"
 
-enum class elusive_icon : char32_t {
+hi_export_module(hikogui.font.elusive_icon);
+
+hi_export namespace hi::inline v1 {
+
+hi_export enum class elusive_icon : char32_t {
     AddressBook = 0xf102,
     AddressBookAlt = 0xf101,
     Adjust = 0xf104,

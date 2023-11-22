@@ -8,17 +8,22 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
+#include <utility>
 #include <atomic>
 #include <type_traits>
 #include <bit>
+
+hi_export_module(hikogui.concurrency.global_state);
+
 
 hi_warning_push();
 // C26490: Don't use reinterpret_cast
 // Need it for allow the use of enum in an atomic operation.
 hi_warning_ignore_msvc(26490);
 
-namespace hi { inline namespace v1 {
+hi_export namespace hi { inline namespace v1 {
 
 /** The flag-type used for global state.
  *
@@ -53,22 +58,22 @@ enum class global_state_type : uint64_t {
 
 [[nodiscard]] constexpr global_state_type operator|(global_state_type lhs, global_state_type rhs) noexcept
 {
-    return static_cast<global_state_type>(to_underlying(lhs) | to_underlying(rhs));
+    return static_cast<global_state_type>(std::to_underlying(lhs) | std::to_underlying(rhs));
 }
 
 [[nodiscard]] constexpr global_state_type operator&(global_state_type lhs, global_state_type rhs) noexcept
 {
-    return static_cast<global_state_type>(to_underlying(lhs) & to_underlying(rhs));
+    return static_cast<global_state_type>(std::to_underlying(lhs) & std::to_underlying(rhs));
 }
 
 [[nodiscard]] constexpr global_state_type operator~(global_state_type rhs) noexcept
 {
-    return static_cast<global_state_type>(~to_underlying(rhs));
+    return static_cast<global_state_type>(~std::to_underlying(rhs));
 }
 
 [[nodiscard]] constexpr bool to_bool(global_state_type rhs) noexcept
 {
-    return to_bool(to_underlying(rhs));
+    return to_bool(std::to_underlying(rhs));
 }
 
 [[nodiscard]] constexpr bool is_system_running(global_state_type rhs) noexcept
@@ -89,7 +94,7 @@ struct std::atomic<hi::global_state_type> {
     using atomic_type = std::atomic<underlying_type_t<value_type>>;
     atomic_type v;
 
-    static constexpr bool is_always_lock_free = atomic_type::is_always_lock_free;
+    constexpr static bool is_always_lock_free = atomic_type::is_always_lock_free;
 
     constexpr atomic() noexcept = default;
     atomic(atomic const&) = delete;
@@ -97,7 +102,7 @@ struct std::atomic<hi::global_state_type> {
     atomic& operator=(atomic const&) = delete;
     atomic& operator=(atomic&&) = delete;
 
-    constexpr atomic(value_type desired) noexcept : v(to_underlying(desired)) {}
+    constexpr atomic(value_type desired) noexcept : v(std::to_underlying(desired)) {}
 
     [[nodiscard]] bool is_lock_free() const noexcept
     {
@@ -106,7 +111,7 @@ struct std::atomic<hi::global_state_type> {
 
     void store(value_type desired, std::memory_order order = std::memory_order::seq_cst) noexcept
     {
-        return v.store(hi::to_underlying(desired), order);
+        return v.store(std::to_underlying(desired), order);
     }
 
     [[nodiscard]] value_type load(std::memory_order order = std::memory_order::seq_cst) const noexcept
@@ -116,14 +121,14 @@ struct std::atomic<hi::global_state_type> {
 
     [[nodiscard]] value_type exchange(value_type desired, std::memory_order order = std::memory_order::seq_cst) noexcept
     {
-        return static_cast<value_type>(v.exchange(hi::to_underlying(desired), order));
+        return static_cast<value_type>(v.exchange(std::to_underlying(desired), order));
     }
 
     [[nodiscard]] bool
     compare_exchange_weak(value_type& expected, value_type desired, std::memory_order success, std::memory_order failure) noexcept
     {
         return v.compare_exchange_weak(
-            reinterpret_cast<underlying_type_t<value_type>&>(expected), hi::to_underlying(desired), success, failure);
+            reinterpret_cast<underlying_type_t<value_type>&>(expected), std::to_underlying(desired), success, failure);
     }
 
     [[nodiscard]] bool
@@ -139,7 +144,7 @@ struct std::atomic<hi::global_state_type> {
         std::memory_order failure) noexcept
     {
         return v.compare_exchange_weak(
-            reinterpret_cast<underlying_type_t<value_type>&>(expected), hi::to_underlying(desired), success, failure);
+            reinterpret_cast<underlying_type_t<value_type>&>(expected), std::to_underlying(desired), success, failure);
     }
 
     [[nodiscard]] bool compare_exchange_strong(
@@ -152,12 +157,12 @@ struct std::atomic<hi::global_state_type> {
 
     value_type fetch_and(value_type arg, std::memory_order order = std::memory_order::seq_cst) noexcept
     {
-        return static_cast<value_type>(v.fetch_and(hi::to_underlying(arg), order));
+        return static_cast<value_type>(v.fetch_and(std::to_underlying(arg), order));
     }
 
     value_type fetch_or(value_type arg, std::memory_order order = std::memory_order::seq_cst) noexcept
     {
-        return static_cast<value_type>(v.fetch_or(hi::to_underlying(arg), order));
+        return static_cast<value_type>(v.fetch_or(std::to_underlying(arg), order));
     }
 
     operator value_type() const noexcept
@@ -182,7 +187,7 @@ struct std::atomic<hi::global_state_type> {
     }
 };
 
-namespace hi { inline namespace v1 {
+hi_export namespace hi { inline namespace v1 {
 
 /** The global state of the hikogui framework.
  *
@@ -195,7 +200,7 @@ namespace hi { inline namespace v1 {
  *
  * @ingroup concurrency
  */
-inline std::atomic<global_state_type> global_state = global_state_type::log_level_default;
+hi_inline std::atomic<global_state_type> global_state = global_state_type::log_level_default;
 
 /** Check if the HikoGUI system is running.
  *
@@ -203,7 +208,7 @@ inline std::atomic<global_state_type> global_state = global_state_type::log_leve
  *
  * @ingroup concurrency
  */
-[[nodiscard]] inline bool is_system_running() noexcept
+[[nodiscard]] hi_inline bool is_system_running() noexcept
 {
     return is_system_running(global_state.load(std::memory_order::relaxed));
 }
@@ -214,7 +219,7 @@ inline std::atomic<global_state_type> global_state = global_state_type::log_leve
  *
  * @ingroup concurrency
  */
-[[nodiscard]] inline bool is_system_shutting_down() noexcept
+[[nodiscard]] hi_inline bool is_system_shutting_down() noexcept
 {
     return is_system_shutting_down(global_state.load(std::memory_order::relaxed));
 }
@@ -224,7 +229,7 @@ inline std::atomic<global_state_type> global_state = global_state_type::log_leve
  * @ingroup concurrency
  * @param log_level A mask of which log levels should be logged.
  */
-inline void set_log_level(global_state_type log_level) noexcept
+hi_inline void set_log_level(global_state_type log_level) noexcept
 {
     // Only the log_* bits should be set.
     hi_assert(not to_bool(log_level & ~global_state_type::log_mask));
@@ -241,9 +246,9 @@ inline void set_log_level(global_state_type log_level) noexcept
  * @param order Memory order to use on the global_state variable.
  * @return True if the subsystem was enabled.
  */
-inline bool global_state_disable(global_state_type subsystem, std::memory_order order = std::memory_order::seq_cst) noexcept
+hi_inline bool global_state_disable(global_state_type subsystem, std::memory_order order = std::memory_order::seq_cst) noexcept
 {
-    hi_assert(std::popcount(to_underlying(subsystem)) == 1);
+    hi_assert(std::popcount(std::to_underlying(subsystem)) == 1);
     return to_bool(global_state.fetch_and(~subsystem, order) & subsystem);
 }
 
@@ -254,9 +259,9 @@ inline bool global_state_disable(global_state_type subsystem, std::memory_order 
  * @param order Memory order to use on the global_state variable.
  * @return True if the subsystem was enabled.
  */
-inline bool global_state_enable(global_state_type subsystem, std::memory_order order = std::memory_order::seq_cst) noexcept
+hi_inline bool global_state_enable(global_state_type subsystem, std::memory_order order = std::memory_order::seq_cst) noexcept
 {
-    hi_assert(std::popcount(to_underlying(subsystem)) == 1);
+    hi_assert(std::popcount(std::to_underlying(subsystem)) == 1);
     return to_bool(global_state.fetch_or(subsystem, order) & subsystem);
 }
 

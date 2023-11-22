@@ -8,12 +8,15 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <string>
 #include <string_view>
 #include <ostream>
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.GUI : gui_event_type);
+
+hi_export namespace hi { inline namespace v1 {
 
 /** GUI event type.
  * @ingroup GUI
@@ -103,6 +106,7 @@ enum class gui_event_type {
     gui_toolbar_next,
     gui_toolbar_prev,
     gui_activate,
+    gui_activate_stay,
     gui_activate_next,
     gui_cancel,
 };
@@ -182,6 +186,7 @@ constexpr auto gui_event_type_metadata = enum_metadata{
     gui_event_type::gui_toolbar_next, "gui_toolbar_next",
     gui_event_type::gui_toolbar_prev, "gui_toolbar_prev",
     gui_event_type::gui_activate, "gui_activate",
+    gui_event_type::gui_activate_stay, "gui_activate_stay",
     gui_event_type::gui_activate_next, "gui_activate_next",
     gui_event_type::gui_cancel, "gui_cancel"
 };
@@ -189,7 +194,7 @@ constexpr auto gui_event_type_metadata = enum_metadata{
 
 /** Convert a GUI event type to a string.
  */
-inline std::string_view to_string(gui_event_type rhs) noexcept
+hi_inline std::string_view to_string(gui_event_type rhs) noexcept
 {
     return gui_event_type_metadata[rhs];
 }

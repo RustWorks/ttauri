@@ -4,7 +4,11 @@
 
 #pragma once
 
-namespace hi::inline v1 {
+#include "../macros.hpp"
+
+hi_export_module(hikogui.net.stream);
+
+hi_export namespace hi::inline v1 {
 
 class Socketstream {
 protected:

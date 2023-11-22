@@ -8,11 +8,17 @@
 
 #pragma once
 
-#include "../SIMD/module.hpp"
-#include "../geometry/module.hpp"
+#include "../SIMD/SIMD.hpp"
+#include "../geometry/geometry.hpp"
+#include "../macros.hpp"
 #include <algorithm>
+#include <array>
+#include <bit>
+#include <cstdint>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.image.sfloat_rg32);
+
+hi_export namespace hi::inline v1 {
 
 /** 2 x float32 pixel format.
 * 
@@ -29,6 +35,8 @@ public:
     sfloat_rg32(sfloat_rg32 &&rhs) noexcept = default;
     sfloat_rg32 &operator=(sfloat_rg32 const &rhs) noexcept = default;
     sfloat_rg32 &operator=(sfloat_rg32 &&rhs) noexcept = default;
+
+    constexpr sfloat_rg32(float x, float y) noexcept : v{x, y} {}
 
     explicit sfloat_rg32(f32x4 const &rhs) noexcept : v{rhs.r(), rhs.g()} {}
 

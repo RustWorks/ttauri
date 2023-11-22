@@ -4,11 +4,15 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
+#include <limits>
 #include <atomic>
 #include <cstdint>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.concurrency.wfree_idle_count);
+
+hi_export namespace hi::inline v1 {
 
 /** Counts how many times a critical section was idle.
  *

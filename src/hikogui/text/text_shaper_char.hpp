@@ -5,13 +5,14 @@
 #pragma once
 
 #include "text_style.hpp"
-#include "../font/module.hpp"
-#include "../unicode/unicode_description.hpp"
-#include "../unicode/grapheme.hpp"
-#include "../geometry/module.hpp"
+#include "../font/font.hpp"
+#include "../unicode/unicode.hpp"
+#include "../geometry/geometry.hpp"
+#include "../macros.hpp"
 
-namespace hi::inline v1 {
-class font_book;
+hi_export_module(hikogui.text.text_shaper_char);
+
+hi_export namespace hi::inline v1 {
 
 class text_shaper_char {
 public:
@@ -29,7 +30,7 @@ public:
 
     /** The glyph representing one or more graphemes.
      * The glyph will change during shaping of the text:
-     *  1. The initial glyph, used for determining the width of the grapheme
+     *  1. The starter glyph, used for determining the width of the grapheme
      *     and the folding algorithm.
      *  2. The glyph representing a bracket may be replaced with a mirrored bracket
      *     by the bidi-algorithm.
@@ -37,9 +38,9 @@ public:
      *     for better continuation of cursive text and merging of graphemes into
      *     a ligature.
      */
-    hi::glyph_ids glyph;
+    hi::font_book::font_glyphs_type glyphs;
 
-    /** The glyph metrics of the currently glyph.
+    /** The glyph metrics of the current starter glyph.
      *
      * The metrics are scaled by `scale`.
      */
@@ -83,9 +84,9 @@ public:
      */
     aarectangle rectangle;
 
-    /** The unicode description of the grapheme.
+    /** The general category of this grapheme.
      */
-    unicode_description const *description;
+    unicode_general_category general_category;
 
     /** The text direction for this glyph.
      *
@@ -99,7 +100,7 @@ public:
      * - The script of characters before/after this character in the same word, or if `unicode_script::Common`;
      * - The script passed during construction of the text_shaper.
      */
-    unicode_script script;
+    iso_15924 script;
 
     /** The scale of the glyph for displaying on the screen.
      */
@@ -124,21 +125,40 @@ public:
      */
     bool glyph_is_initial = false;
 
-    [[nodiscard]] text_shaper_char(hi::grapheme const &grapheme, text_style const &style, float dpi_scale) noexcept;
+    [[nodiscard]] text_shaper_char(hi::grapheme const& grapheme, text_style const& style, float dpi_scale) noexcept :
+        grapheme(grapheme),
+        style(style),
+        dpi_scale(dpi_scale),
+        line_nr(std::numeric_limits<size_t>::max()),
+        column_nr(std::numeric_limits<size_t>::max()),
+        general_category(ucd_get_general_category(grapheme.starter()))
+    {
+    }
 
     /** Initialize the glyph based on the grapheme.
      *
      * @note The glyph is only initialized when `glyph_is_initial == false`.
      * @post `glyph`, `metrics` and `width` are modified. `glyph_is_initial` is set to true.
      */
-    void initialize_glyph(hi::font_book const &font_book, hi::font const &font) noexcept;
+    void initialize_glyph(hi::font const& font) noexcept
+    {
+        if (not glyph_is_initial) {
+            set_glyph(find_glyph(font, grapheme));
+
+            width = metrics.advance;
+            glyph_is_initial = true;
+        }
+    }
 
     /** Initialize the glyph based on the grapheme.
      *
      * @note The glyph is only initialized when `glyph_is_initial == false`.
      * @post `glyph`, `metrics` and `width` are modified. `glyph_is_initial` is set to true.
      */
-    void initialize_glyph(hi::font_book &font_book) noexcept;
+    void initialize_glyph() noexcept
+    {
+        return initialize_glyph(find_font(style->family_id, style->variant));
+    }
 
     /** Called by the bidi-algorithm to mirror glyphs.
      *
@@ -148,21 +168,29 @@ public:
      * @post `glyph` and `metrics` are modified. `glyph_is_initial` is set to false.
      * @note The `width` remains based on the original glyph.
      */
-    void replace_glyph(char32_t code_point) noexcept;
+    void replace_glyph(char32_t code_point) noexcept
+    {
+        hi_axiom_not_null(glyphs.font);
+        hilet& font = *glyphs.font;
+        set_glyph(font_book::font_glyphs_type{font, font.find_glyph(code_point)});
+
+        glyph_is_initial = false;
+    }
 
     /** Get the scaled font metrics for this character.
      */
     [[nodiscard]] hi::font_metrics font_metrics() const noexcept
     {
-        return scale * glyph.font().metrics;
+        hi_axiom_not_null(glyphs.font);
+        return scale * glyphs.font->metrics;
     }
 
-    [[nodiscard]] friend bool operator==(text_shaper_char const &lhs, char32_t const &rhs) noexcept
+    [[nodiscard]] friend bool operator==(text_shaper_char const& lhs, char32_t const& rhs) noexcept
     {
         return lhs.grapheme == rhs;
     }
 
-    [[nodiscard]] friend bool operator==(text_shaper_char const &lhs, char const &rhs) noexcept
+    [[nodiscard]] friend bool operator==(text_shaper_char const& lhs, char const& rhs) noexcept
     {
         return lhs.grapheme == rhs;
     }
@@ -170,7 +198,13 @@ public:
 private:
     /** Load metrics based on the loaded glyph.
      */
-    void set_glyph(hi::glyph_ids &&new_glyph) noexcept;
+    void set_glyph(hi::font_book::font_glyphs_type&& new_glyphs) noexcept
+    {
+        glyphs = std::move(new_glyphs);
+        hi_axiom_not_null(glyphs.font);
+        scale = glyphs.get_font_metrics().round_scale(dpi_scale * style->size);
+        metrics = scale * glyphs.get_starter_metrics();
+    }
 };
 
 } // namespace hi::inline v1

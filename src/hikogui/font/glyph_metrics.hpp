@@ -4,16 +4,20 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
-#include "../geometry/module.hpp"
+#include "../utility/utility.hpp"
+#include "../geometry/geometry.hpp"
+#include "../macros.hpp"
+#include <compare>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.font.glyph_metrics);
+
+hi_export namespace hi::inline v1 {
 
 /*! Metrics of a glyph.
  * This information is used to position glyphs next to each other
  * and determinate the size of a shaped text.
  */
-struct glyph_metrics {
+hi_export struct glyph_metrics {
     /*! Bounding box of the path.
      */
     aarectangle bounding_rectangle = {};

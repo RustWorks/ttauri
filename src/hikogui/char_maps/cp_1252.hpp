@@ -9,11 +9,20 @@
 #pragma once
 
 #include "char_converter.hpp"
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <cstdint>
 #include <utility>
+#include <array>
+#include <bit>
+#include <compare>
+#if defined(HI_HAS_SSE2)
+#include <emmintrin.h>
+#endif
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.char_maps.cp_1252);
+
+hi_export namespace hi { inline namespace v1 {
 
 namespace detail {
 

@@ -8,14 +8,20 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <algorithm>
+#include <cmath>
+#include <bit>
+#include <cstdint>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.image.snorm_r8);
+
+hi_export namespace hi::inline v1 {
 
 [[nodiscard]] constexpr int8_t make_snorm_r8_value(float rhs) noexcept
 {
-    return narrow_cast<int8_t>(std::round(std::clamp(rhs, -1.0f, 1.0f) * 127.0f));
+    return round_cast<int8_t>(std::round(std::clamp(rhs, -1.0f, 1.0f) * 127.0f));
 }
 
 /** 1 x int8_t pixel format.

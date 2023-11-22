@@ -4,29 +4,35 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
+#include <string_view>
+#include <utility>
+#include <format>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.audio.audio_direction);
 
-enum class audio_direction : unsigned char { none = 0b00, input = 0b01, output = 0b10, bidirectional = 0b11 };
+hi_export namespace hi { inline namespace v1 {
 
-[[nodiscard]] constexpr audio_direction operator&(audio_direction const& lhs, audio_direction const& rhs) noexcept
+hi_export enum class audio_direction : unsigned char { none = 0b00, input = 0b01, output = 0b10, bidirectional = 0b11 };
+
+hi_export [[nodiscard]] constexpr audio_direction operator&(audio_direction const& lhs, audio_direction const& rhs) noexcept
 {
-    return static_cast<audio_direction>(to_underlying(lhs) & to_underlying(rhs));
+    return static_cast<audio_direction>(std::to_underlying(lhs) & std::to_underlying(rhs));
 }
 
-[[nodiscard]] constexpr audio_direction operator|(audio_direction const& lhs, audio_direction const& rhs) noexcept
+hi_export [[nodiscard]] constexpr audio_direction operator|(audio_direction const& lhs, audio_direction const& rhs) noexcept
 {
-    return static_cast<audio_direction>(to_underlying(lhs) | to_underlying(rhs));
+    return static_cast<audio_direction>(std::to_underlying(lhs) | std::to_underlying(rhs));
 }
 
-[[nodiscard]] constexpr bool to_bool(audio_direction const &rhs) noexcept
+hi_export [[nodiscard]] constexpr bool to_bool(audio_direction const &rhs) noexcept
 {
-    return to_bool(to_underlying(rhs));
+    return to_bool(std::to_underlying(rhs));
 }
 
 // clang-format off
-constexpr auto audio_direction_metadata = enum_metadata{
+hi_export constexpr auto audio_direction_metadata = enum_metadata{
     audio_direction::none, "none",
     audio_direction::input, "input",
     audio_direction::output, "output",
@@ -34,12 +40,13 @@ constexpr auto audio_direction_metadata = enum_metadata{
 };
 // clang-format on
 
-}
+}}
 
-template<typename CharT>
-struct std::formatter<hi::audio_direction, CharT> : std::formatter<std::string_view, CharT> {
-    auto format(hi::audio_direction const& t, auto& fc)
+// XXX #617 MSVC bug does not handle partial specialization in modules.
+hi_export template<>
+struct std::formatter<hi::audio_direction, char> : std::formatter<std::string_view, char> {
+    auto format(hi::audio_direction const& t, auto& fc) const
     {
-        return std::formatter<std::string_view, CharT>::format(hi::audio_direction_metadata[t], fc);
+        return std::formatter<std::string_view, char>::format(hi::audio_direction_metadata[t], fc);
     }
 };

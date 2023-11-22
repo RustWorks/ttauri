@@ -7,11 +7,14 @@
 #include "pcm_format.hpp"
 #include "audio_stream_format.hpp"
 #include "surround_mode.hpp"
+#include "../macros.hpp"
 #include <compare>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.audio.audio_format_range);
 
-class audio_format_range {
+hi_export namespace hi { inline namespace v1 {
+
+hi_export class audio_format_range {
 public:
     pcm_format format = {};
     uint16_t num_channels = 0;
@@ -84,12 +87,13 @@ public:
     }
 };
 
-} // namespace hi::inline v1
+}} // namespace hi::inline v1
 
-template<typename CharT>
-struct std::formatter<hi::audio_format_range, CharT> : std::formatter<std::string_view, CharT> {
-    auto format(hi::audio_format_range const& t, auto& fc)
+// XXX #617 MSVC bug does not handle partial specialization in modules.
+hi_export template<>
+struct std::formatter<hi::audio_format_range, char> : std::formatter<std::string_view, char> {
+    auto format(hi::audio_format_range const& t, auto& fc) const
     {
-        return std::formatter<std::string_view, CharT>::format(to_string(t), fc);
+        return std::formatter<std::string_view, char>::format(to_string(t), fc);
     }
 };

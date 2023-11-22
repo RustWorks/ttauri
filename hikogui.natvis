@@ -39,7 +39,8 @@
         </Expand>
     </Type>
     <Type Name="hi::v1::grapheme">
-        <DisplayString Condition="_value &lt;= 0x10ffff">{static_cast&lt;char32_t&gt;(_value)}</DisplayString>
+        <DisplayString Condition="(_value &amp; 0x1fffff) &lt;= 0x10ffff">{static_cast&lt;char32_t&gt;(_value &amp; 0x1fffff)s}</DisplayString>
+        <DisplayString Condition="(_value &amp; 0x1fffff) &gt;= 0x110000">{static_cast&lt;char32_t&gt;(hi::v1::detail::long_graphemes._table[(_value &amp; 0x1fffff) - 0x110000] &amp; 0x1fffff)}+</DisplayString>
     </Type>
     <Type Name="std::basic_string&lt;hi::v1::grapheme,std::char_traits&lt;hi::v1::grapheme&gt;,std::allocator&lt;hi::v1::grapheme&gt;&gt;&gt;">
         <DisplayString Condition="_Mypair._Myval2._Myres &lt; _Mypair._Myval2._BUF_SIZE">{_Mypair._Myval2._Bx._Buf,[_Mypair._Myval2._Mysize]}</DisplayString>
@@ -64,24 +65,6 @@
     </Type>
     <Type Name="hi::v1::font">
         <DisplayString>{family_name} - {sub_family_name}</DisplayString>
-    </Type>
-    <Type Name="hi::v1::glyph_ids">
-        <DisplayString Condition="(static_cast&lt;size_t&gt;(_ptr) &amp; 15) == 1">[] {*_font}</DisplayString>
-        <DisplayString Condition="(static_cast&lt;size_t&gt;(_ptr) &amp; 15) == 3">[{static_cast&lt;int&gt;((static_cast&lt;size_t&gt;(_ptr) >> 16) &amp; 0xffff)}] {*_font}</DisplayString>
-        <DisplayString Condition="(static_cast&lt;size_t&gt;(_ptr) &amp; 15) == 5">[{static_cast&lt;int&gt;((static_cast&lt;size_t&gt;(_ptr) >> 16) &amp; 0xffff)}, {static_cast&lt;int&gt;((static_cast&lt;size_t&gt;(_ptr) >> 32) &amp; 0xffff)}] {*_font}</DisplayString>
-        <DisplayString Condition="(static_cast&lt;size_t&gt;(_ptr) &amp; 15) == 7">[{static_cast&lt;int&gt;((static_cast&lt;size_t&gt;(_ptr) >> 16) &amp; 0xffff)}, {static_cast&lt;int&gt;((static_cast&lt;size_t&gt;(_ptr) >> 32) &amp; 0xffff)}, {static_cast&lt;int&gt;((static_cast&lt;size_t&gt;(_ptr) >> 48) &amp; 0xffff)}] {*_font}</DisplayString>
-        <DisplayString Condition="(static_cast&lt;size_t&gt;(_ptr) &amp; 1) == 0">{*_ptr} {*_font}</DisplayString>
-        <Expand>
-            <Item Name="[font]">*_font</Item>
-            <Item Name="[num_glyphs]" Condition="(static_cast&lt;size_t&gt;(_ptr) &amp; 1) == 1">static_cast&lt;int&gt;((static_cast&lt;size_t&gt;(_ptr) >> 1) &amp; 3)</Item>
-            <Item Name="[num_glyphs]" Condition="(static_cast&lt;size_t&gt;(_ptr) &amp; 1) == 0">_ptr->_num_glyphs</Item>
-            <Item Name="[num_graphemes]" Condition="(static_cast&lt;size_t&gt;(_ptr) &amp; 1) == 1">static_cast&lt;int&gt;((static_cast&lt;size_t&gt;(_ptr) >> 4) &amp; 15)</Item>
-            <Item Name="[num_graphemes]" Condition="(static_cast&lt;size_t&gt;(_ptr) &amp; 1) == 0">_ptr->_num_graphemes</Item>
-            <Item Name="[0]" Condition="((static_cast&lt;size_t&gt;(_ptr) &amp; 1) == 1) &amp;&amp; ((static_cast&lt;size_t&gt;(_ptr) &amp; 15) &gt;= 3)">static_cast&lt;int&gt;((static_cast&lt;size_t&gt;(_ptr) >> 16) &amp; 0xffff)</Item>
-            <Item Name="[1]" Condition="((static_cast&lt;size_t&gt;(_ptr) &amp; 1) == 1) &amp;&amp; ((static_cast&lt;size_t&gt;(_ptr) &amp; 15) &gt;= 5)">static_cast&lt;int&gt;((static_cast&lt;size_t&gt;(_ptr) >> 32) &amp; 0xffff)</Item>
-            <Item Name="[2]" Condition="((static_cast&lt;size_t&gt;(_ptr) &amp; 1) == 1) &amp;&amp; ((static_cast&lt;size_t&gt;(_ptr) &amp; 15) &gt;= 7)">static_cast&lt;int&gt;((static_cast&lt;size_t&gt;(_ptr) >> 48) &amp; 0xffff)</Item>
-            <ExpandedItem Condition="static_cast&lt;size_t&gt;(_ptr) &amp; 1 == 0">_ptr->_glyphs</ExpandedItem>
-        </Expand>
     </Type>
     <Type Name="hi::v1::alignment">
         <DisplayString Condition="_value == 0x00">none-none</DisplayString>
@@ -138,14 +121,14 @@
             <Item Name="[7]">v[7],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::point&lt;*,2&gt;">
+    <Type Name="hi::v1::point2">
         <DisplayString>&lt;{_v.v[0],g}, {_v.v[1],g}&gt;</DisplayString>
         <Expand>
             <Item Name="[x]">_v.v[0],g</Item>
             <Item Name="[y]">_v.v[1],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::point&lt;*,3&gt;">
+    <Type Name="hi::v1::point3">
         <DisplayString>&lt;{_v.v[0],g}, {_v.v[1],g}, {_v.v[2],g}&gt;</DisplayString>
         <Expand>
             <Item Name="[x]">_v.v[0],g</Item>
@@ -153,14 +136,14 @@
             <Item Name="[z]">_v.v[2],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::vector&lt;*,2&gt;">
+    <Type Name="hi::v1::vector2">
         <DisplayString>({_v.v[0],g}, {_v.v[1],g})</DisplayString>
         <Expand>
             <Item Name="[x]">_v.v[0],g</Item>
             <Item Name="[y]">_v.v[1],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::vector&lt;*,3&gt;">
+    <Type Name="hi::v1::vector3">
         <DisplayString>({_v.v[0],g}, {_v.v[1],g}, {_v.v[2],g})</DisplayString>
         <Expand>
             <Item Name="[x]">_v.v[0],g</Item>
@@ -168,14 +151,14 @@
             <Item Name="[z]">_v.v[2],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::extent&lt;*,2&gt;">
+    <Type Name="hi::v1::extent2">
         <DisplayString>[{_v.v[0],g}, {_v.v[1],g}]</DisplayString>
         <Expand>
             <Item Name="[width]">_v.v[0],g</Item>
             <Item Name="[height]">_v.v[1],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::extent&lt;*,3&gt;">
+    <Type Name="hi::v1::extent3">
         <DisplayString>[{_v.v[0],g}, {_v.v[1],g}, {_v.v[2],g}]</DisplayString>
         <Expand>
             <Item Name="[width]">_v.v[0],g</Item>
@@ -183,7 +166,7 @@
             <Item Name="[depth]">_v.v[2],g</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::matrix&lt;3&gt;">
+    <Type Name="hi::v1::matrix3">
         <DisplayString>({_col0.v[0],g}, {_col0.v[1],g}, {_col0.v[2],g}, {_col0.v[3],g}), ({_col1.v[0],g}, {_col1.v[1],g}, {_col1.v[2],g}, {_col1.v[3],g}), ({_col2.v[0],g}, {_col2.v[1],g}, {_col2.v[2],g}, {_col2.v[3],g}), ({_col3.v[0],g}, {_col3.v[1],g}, {_col3.v[2],g}, {_col3.v[3],g})</DisplayString>
     </Type>
     <Type Name="hi::v1::color">
@@ -230,7 +213,7 @@
             <Item Name="[3]">p3</Item>
         </Expand>
     </Type>
-    <Type Name="hi::v1::geo::axis_aligned_rectangle&lt;*&gt;">
+    <Type Name="hi::v1::aarectangle">
         <DisplayString>{{ &lt;{v.v[0],g}, {v.v[1],g}&gt;, [{v.v[2] - v.v[0],g}, {v.v[3] - v.v[1],g}] }}</DisplayString>
         <Expand>
             <Item Name="[left]">v.v[0],g</Item>
@@ -258,13 +241,13 @@
         </Expand>
     </Type>
     <Type Name="hi::v1::tr">
-        <DisplayString>tr({_msg_id})</DisplayString>
+        <DisplayString>txt({_msg_id})</DisplayString>
     </Type>
     <Type Name="hi::v1::label">
         <DisplayString>label({text._msg_id})</DisplayString>
     </Type>
-    <Type Name="hi::v1::label_widget">
-        <DisplayString>{{ label_widget {label} }}</DisplayString>
+    <Type Name="hi::v1::tagged_id&lt;*,*,*&rt;">
+        <DisplayString>id({value})</DisplayString>
     </Type>
     <Type Name="hi::v1::gui_event">
         <DisplayString Condition="_type == hi::v1::gui_event_type::keyboard_down">{_type,en}: {_key,en}</DisplayString>

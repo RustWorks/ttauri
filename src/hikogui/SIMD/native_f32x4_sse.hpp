@@ -5,12 +5,38 @@
 #pragma once
 
 #include "native_simd_utility.hpp"
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <span>
 #include <array>
 #include <ostream>
 
-namespace hi { inline namespace v1 {
+#ifdef HI_HAS_SSE
+#include <xmmintrin.h>
+#endif
+#ifdef HI_HAS_SSE2
+#include <emmintrin.h>
+#endif
+#ifdef HI_HAS_SSE3
+#include <pmmintrin.h>
+#endif
+#ifdef HI_HAS_SSSE3
+#include <tmmintrin.h>
+#endif
+#ifdef HI_HAS_SSE4_1
+#include <smmintrin.h>
+#endif
+#ifdef HI_HAS_SSE4_2
+#include <nmmintrin.h>
+#endif
+#ifdef HI_HAS_AVX
+#include <immintrin.h>
+#endif
+
+hi_export_module(hikogui.SIMD : native_f32x4_sse);
+
+
+hi_export namespace hi { inline namespace v1 {
 
 #ifdef HI_HAS_SSE
 
@@ -156,19 +182,16 @@ struct native_simd<float, 4> {
     {
         hi_axiom(a <= 0b1111);
 
-        uint64_t a_ = a;
+        auto a_ = static_cast<int64_t>(a) << 31;
 
-        a_ <<= 31;
-        auto tmp = _mm_cvtsi32_si128(truncate<uint32_t>(a_));
+        hilet f0 = std::bit_cast<float>(static_cast<int32_t>(a_) >> 31);
         a_ >>= 1;
-        tmp = _mm_insert_epi32(tmp, truncate<uint32_t>(a_), 1);
+        hilet f1 = std::bit_cast<float>(static_cast<int32_t>(a_) >> 31);
         a_ >>= 1;
-        tmp = _mm_insert_epi32(tmp, truncate<uint32_t>(a_), 2);
+        hilet f2 = std::bit_cast<float>(static_cast<int32_t>(a_) >> 31);
         a_ >>= 1;
-        tmp = _mm_insert_epi32(tmp, truncate<uint32_t>(a_), 3);
-
-        tmp = _mm_srai_epi32(tmp, 31);
-        return native_simd{_mm_castsi128_ps(tmp)};
+        hilet f3 = std::bit_cast<float>(static_cast<int32_t>(a_) >> 31);
+        return native_simd{_mm_set_ps(f3, f2, f1, f0)};
     }
 
     /** Create a vector with all the bits set.
@@ -334,7 +357,7 @@ struct native_simd<float, 4> {
     template<native_rounding_mode Rounding = native_rounding_mode::current>
     [[nodiscard]] friend native_simd round(native_simd a) noexcept
     {
-        return native_simd{_mm_round_ps(a.v, to_underlying(Rounding))};
+        return native_simd{_mm_round_ps(a.v, std::to_underlying(Rounding))};
     }
 #endif
 
@@ -492,7 +515,7 @@ struct native_simd<float, 4> {
         }
     }
 
-    [[nodiscard]] friend native_simd permute(native_simd a, native_simd<int32_t, 4> const& source_elements) noexcept;
+    friend native_simd permute(native_simd a, native_simd<int32_t, 4> const& source_elements) noexcept;
 
     /** Swizzle elements.
      *

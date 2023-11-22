@@ -4,7 +4,13 @@
 
 #pragma once
 
-namespace hi::inline v1 {
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
+#include <utility>
+
+hi_export_module(hikogui.GUI : keyboard_focus_group);
+
+hi_export namespace hi::inline v1 {
 
 /** The keyboard focus group used for finding a widget that will accept a particular focus.
  */
@@ -38,17 +44,17 @@ enum class keyboard_focus_group {
 
 [[nodiscard]] constexpr keyboard_focus_group operator&(keyboard_focus_group const &lhs, keyboard_focus_group const &rhs) noexcept
 {
-    return static_cast<keyboard_focus_group>(to_underlying(lhs) & to_underlying(rhs));
+    return static_cast<keyboard_focus_group>(std::to_underlying(lhs) & std::to_underlying(rhs));
 }
 
 [[nodiscard]] constexpr keyboard_focus_group operator|(keyboard_focus_group const &lhs, keyboard_focus_group const &rhs) noexcept
 {
-    return static_cast<keyboard_focus_group>(to_underlying(lhs) | to_underlying(rhs));
+    return static_cast<keyboard_focus_group>(std::to_underlying(lhs) | std::to_underlying(rhs));
 }
 
 [[nodiscard]] constexpr bool to_bool(keyboard_focus_group group) noexcept
 {
-    return to_bool(to_underlying(group));
+    return to_bool(std::to_underlying(group));
 }
 
 } // namespace hi::inline v1

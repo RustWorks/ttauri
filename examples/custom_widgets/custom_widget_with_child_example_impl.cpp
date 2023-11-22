@@ -2,20 +2,16 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
-#include "hikogui/module.hpp"
-#include "hikogui/GUI/gui_system.hpp"
-#include "hikogui/widgets/widget.hpp"
-#include "hikogui/widgets/label_widget.hpp"
+#include "hikogui/hikogui.hpp"
 #include "hikogui/crt.hpp"
-#include "hikogui/loop.hpp"
 
 // Every widget must inherit from hi::widget.
 class widget_with_child : public hi::widget {
 public:
     // Every constructor of a widget starts with a `window` and `parent` argument.
-    // In most cases these are automatically filled in when calling a container widget's `make_widget()` function.
+    // In most cases these are automatically filled in when calling a container widget's `emplace()` function.
     template<typename Label>
-    widget_with_child(hi::widget *parent, Label&& label) noexcept : widget(parent)
+    widget_with_child(hi::not_null<widget_intf const *> parent, Label&& label) noexcept : widget(parent)
     {
         // Our child widget is a `label_widget` which requires a label to be passed as an third argument.
         // We use a templated argument to forward the label into the `label_widget`.
@@ -36,11 +32,11 @@ public:
         // We add the ability to resize the widget beyond the size of the label.
         auto r = hi::box_constraints{};
         r.minimum.width() = _label_constraints.minimum.width();
-        r.preferred.width() = _label_constraints.preferred.width() + theme().margin<int>();
-        r.maximum.width() = _label_constraints.maximum.width() + 100;
+        r.preferred.width() = _label_constraints.preferred.width() + theme().margin<float>();
+        r.maximum.width() = _label_constraints.maximum.width() + 100.0f;
         r.minimum.height() = _label_constraints.minimum.height();
-        r.preferred.height() = _label_constraints.preferred.height() + theme().margin<int>();
-        r.maximum.height() = _label_constraints.maximum.height() + 50;
+        r.preferred.height() = _label_constraints.preferred.height() + theme().margin<float>();
+        r.maximum.height() = _label_constraints.maximum.height() + 50.0f;
         r.margins = theme().margin();
         r.alignment = _label_constraints.alignment;
         return r;
@@ -105,7 +101,7 @@ protected:
     //
     // The allocator argument should not be used by the function, it is used by the caller
     // to allocate the co-routine's frame on the stack.
-    [[nodiscard]] hi::generator<widget const &> children(bool include_invisible) const noexcept override
+    [[nodiscard]] hi::generator<widget_intf &> children(bool include_invisible) noexcept override
     {
         // This function is often written as a co-routine that yields a pointer to each of its children.
         co_yield *_label_widget;
@@ -120,9 +116,14 @@ private:
 
 int hi_main(int argc, char *argv[])
 {
-    auto gui = hi::gui_system::make_unique();
-    auto window = gui->make_window(hi::tr("Widget with child"));
-    window->content().make_widget<widget_with_child>("A1", hi::tr("Widget with child"));
+    hi::set_application_name("Custom widget with child example");
+    hi::set_application_vendor("HikoGUI");
+    hi::set_application_version({1, 0, 0});
+
+    auto widget = std::make_unique<hi::window_widget>(hi::txt("Widget with child"));
+    widget->content().emplace<widget_with_child>("A1", hi::txt("Widget with child"));
+
+    auto window = std::make_unique<hi::gui_window>(std::move(widget));
 
     auto close_cbt = window->closing.subscribe(
         [&] {

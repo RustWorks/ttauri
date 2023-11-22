@@ -8,14 +8,20 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <string>
 #include <string_view>
+#include <bit>
+#include <compare>
+#include <array>
 #if defined(HI_HAS_SSE2)
 #include <emmintrin.h>
 #endif
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.char_maps.char_converter);
+
+hi_export namespace hi { inline namespace v1 {
 
 /** Character encoder/decoder template.
  * @ingroup char_maps
@@ -199,7 +205,7 @@ public:
             tmp.resize(num_chars);
             std::memcpy(std::addressof(*tmp.begin()), ptr, num_chars * sizeof(from_char_type));
             for (auto& c : tmp) {
-                c = byte_swap(c);
+                c = std::byteswap(c);
             }
             return convert<OutRange>(std::move(tmp));
         }
@@ -227,7 +233,7 @@ private:
     constexpr static bool _has_write_ascii_chunk16 = true;
 
     template<typename It, typename EndIt>
-    [[nodiscard]] constexpr void _size_ascii(It& it, EndIt last, size_t& count) const noexcept
+    constexpr void _size_ascii(It& it, EndIt last, size_t& count) const noexcept
     {
         if (not std::is_constant_evaluated()) {
 #if defined(HI_HAS_SSE2)

@@ -4,14 +4,19 @@
 
 #pragma once
 
-#include "../geometry/module.hpp"
-#include "../utility/module.hpp"
+#include "../geometry/geometry.hpp"
+#include "../utility/utility.hpp"
 #include "widget_id.hpp"
+#include "../macros.hpp"
 #include <limits>
 #include <cstdint>
 #include <compare>
+#include <utility>
+#include <exception>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.GUI : hitbox);
+
+hi_export namespace hi::inline v1 {
 
 enum class hitbox_type : uint8_t {
     outside,
@@ -53,11 +58,11 @@ public:
 
     [[nodiscard]] constexpr friend std::strong_ordering operator<=>(hitbox const& lhs, hitbox const& rhs) noexcept
     {
-        if ((lhs.widget_id == nullptr) == (rhs.widget_id == nullptr)) {
+        if ((lhs.widget_id == 0) == (rhs.widget_id == 0)) {
             // Either both are widgets, or both are not widgets.
             hilet elevation_ordering = lhs._elevation <=> rhs._elevation;
             if (elevation_ordering == std::partial_ordering::equivalent) {
-                return to_underlying(lhs.type) <=> to_underlying(rhs.type);
+                return std::to_underlying(lhs.type) <=> std::to_underlying(rhs.type);
             } else if (elevation_ordering == std::partial_ordering::less) {
                 return std::strong_ordering::less;
             } else if (elevation_ordering == std::partial_ordering::greater) {
@@ -65,7 +70,7 @@ public:
             } else {
                 hi_no_default();
             }
-        } else if (lhs.widget_id == nullptr) {
+        } else if (lhs.widget_id == 0) {
             // If lhs is not a widget than it is less.
             return std::strong_ordering::less;
         } else {

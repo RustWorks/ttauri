@@ -4,11 +4,17 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
-#include "../strings.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <cctype>
+#include <compare>
+#include <string_view>
+#include <string>
+#include <format>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.i18n.iso_639);
+
+hi_export namespace hi::inline v1 {
 
 /** ISO-639 language code.
  *
@@ -18,10 +24,9 @@ namespace hi::inline v1 {
  *  3. ISO 639-3 (2007)
  *  4. ISO 639-5 (2008)
  *
- * This class compresses this 2 or 3 character language code inside 16 bits,
- * so that together with the script only 32 bits are needed per attributed character.
+ * This class compresses this 2 or 3 character language code inside 15 bits.
  */
-class iso_639 {
+hi_export class iso_639 {
 public:
     /** Set the letter at a specific position.
      *
@@ -30,11 +35,12 @@ public:
      * @param c The character to set. a-z, A-Z, 0-5 or nul.
      */
     template<std::size_t I>
-    constexpr friend iso_639& set(iso_639& rhs, char c)
+    constexpr friend bool set(iso_639& rhs, char c) noexcept
     {
-        hi_check(
-            c == 0 or (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '1' and c <= '5'),
-            "Must be letters or the digits between '1' and '5', or nul");
+        if (not (c == 0 or (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or (c >= '1' and c <= '5'))) {
+            // Must be letters or the digits between '1' and '5', or nul.
+            return false;
+        }
 
         // clang-format off
         uint16_t const x =
@@ -44,14 +50,14 @@ public:
             0;
         // clang-format on
 
-        hi_assert(x <= 0x1f);
+        hi_axiom(x <= 0x1f);
         constexpr auto shift = I * 5;
         rhs._v &= ~(0x1f << shift);
         rhs._v |= x << shift;
-        return rhs;
+        return true;
     }
 
-        /** Get the letter at a specific position.
+    /** Get the letter at a specific position.
      *
      * @tparam I index
      * @param rhs The language code read from.
@@ -84,17 +90,35 @@ public:
      */
     constexpr iso_639(std::string_view str) : _v(0)
     {
-        try {
-            hi_check(str.size() == 2 or str.size() == 3, "ISO-639 incorrect length.");
-
-            set<0>(*this, str[0]);
-            set<1>(*this, str[1]);
-            if (str.size() == 3) {
-                set<2>(*this, str[2]);
-            }
-        } catch (...) {
-            throw parse_error(std::format("A ISO-639 language code must be 2 or 3 letters in length, got '{}'", str));
+        if (str.size() != 2 and str.size() != 3) {
+            throw parse_error("ISO-639 incorrect length.");
         }
+
+        if (not set<0>(*this, str[0])) {
+            throw parse_error("Must be letters or the digits between '1' and '5', or nul.");
+        }
+
+        if (not set<1>(*this, str[1])) {
+            throw parse_error("Must be letters or the digits between '1' and '5', or nul.");
+        }
+
+        if (str.size() == 3) {
+            if (not set<2>(*this, str[2]))  {
+                throw parse_error("Must be letters or the digits between '1' and '5', or nul.");
+            }
+        }
+    }
+
+    constexpr iso_639(intrinsic_t, uint16_t v) noexcept : _v(v) {}
+
+    [[nodiscard]] constexpr uint16_t const& intrinsic() const noexcept
+    {
+        return _v;
+    }
+
+    [[nodiscard]] constexpr uint16_t& intrinsic() noexcept
+    {
+        return _v;
     }
 
     /** Get the number of character.
@@ -149,6 +173,11 @@ public:
         return r;
     }
 
+    [[nodiscard]] constexpr friend std::string to_string(iso_639 const &rhs) noexcept
+    {
+        return rhs.code();
+    }
+
     /** Compare two language codes.
      */
     [[nodiscard]] constexpr friend bool operator==(iso_639 const& lhs, iso_639 const& rhs) noexcept = default;
@@ -157,10 +186,21 @@ public:
      */
     [[nodiscard]] constexpr friend auto operator<=>(iso_639 const& lhs, iso_639 const& rhs) noexcept = default;
 
+    /** Check if rhs matches with lhs.
+     *
+     * @param lhs The language or wild-card.
+     * @param rhs The language.
+     * @return True when lhs is a wild-card or when lhs and rhs are equal.
+     */
+    [[nodiscard]] constexpr friend bool matches(iso_639 const& lhs, iso_639 const& rhs) noexcept
+    {
+        return lhs.empty() or lhs == rhs;
+    }
+
 private:
     /**
      * Encoded as follows:
-     * - [15] Individual language, to determine if iso-639-2 or iso-639-3.
+     * - [15:15] reserved '0'
      * - [14:10] optional third letter
      * - [9:5] second letter
      * - [4:0] first letter
@@ -172,7 +212,7 @@ private:
 
 } // namespace hi::inline v1
 
-template<>
+hi_export template<>
 struct std::hash<hi::iso_639> {
     [[nodiscard]] size_t operator()(hi::iso_639 const& rhs) const noexcept
     {

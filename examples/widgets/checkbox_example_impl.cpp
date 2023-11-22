@@ -2,38 +2,38 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
-#include "hikogui/module.hpp"
-#include "hikogui/GUI/gui_system.hpp"
-#include "hikogui/task.hpp"
-#include "hikogui/widgets/checkbox_widget.hpp"
+#include "hikogui/hikogui.hpp"
 #include "hikogui/crt.hpp"
-#include "hikogui/loop.hpp"
 
 using namespace hi;
 
-task<void> checkbox_example(gui_system &gui)
+task<void> checkbox_example()
 {
-    auto window = gui.make_window(tr("Checkbox example"));
+    auto widget = std::make_unique<window_widget>(txt("Checkbox example"));
 
     /// [Create a label]
-    window->content().make_widget<label_widget>("A1", tr("checkbox:"));
+    widget->content().emplace<label_widget>("A1", txt("checkbox:"));
     /// [Create a label]
 
     /// [Create a checkbox]
     observer<int> value = 0;
 
-    auto &cb = window->content().make_widget<checkbox_widget>("B1", value, 1, 2);
-    cb.on_label = tr("on");
-    cb.off_label = tr("off");
-    cb.other_label = tr("other");
+    auto& cb = widget->content().emplace<checkbox_with_label_widget>("B1", value, 1, 2);
+    cb.attributes.on_label = txt("on");
+    cb.attributes.off_label = txt("off");
+    cb.attributes.other_label = txt("other");
     /// [Create a checkbox]
 
-    co_await window->closing;
+    auto window = gui_window{std::move(widget)};
+    co_await window.closing;
 }
 
 int hi_main(int argc, char* argv[])
 {
-    auto gui = gui_system::make_unique();
-    checkbox_example(*gui);
+    set_application_name("Checkbox example");
+    set_application_vendor("HikoGUI");
+    set_application_version({1, 0, 0});
+
+    checkbox_example();
     return loop::main().resume();
 }

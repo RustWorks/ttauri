@@ -4,7 +4,13 @@
 
 #pragma once
 
-namespace hi::inline v1 {
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
+#include <utility>
+
+hi_export_module(hikogui.GUI : keyboard_state);
+
+hi_export namespace hi::inline v1 {
 
 enum class keyboard_state : uint8_t {
     idle = 0x00,
@@ -15,12 +21,12 @@ enum class keyboard_state : uint8_t {
 
 [[nodiscard]] constexpr keyboard_state operator|(keyboard_state const& lhs, keyboard_state const& rhs) noexcept
 {
-    return static_cast<keyboard_state>(to_underlying(lhs) | to_underlying(rhs));
+    return static_cast<keyboard_state>(std::to_underlying(lhs) | std::to_underlying(rhs));
 }
 
 [[nodiscard]] constexpr keyboard_state operator&(keyboard_state const& lhs, keyboard_state const& rhs) noexcept
 {
-    return static_cast<keyboard_state>(to_underlying(lhs) & to_underlying(rhs));
+    return static_cast<keyboard_state>(std::to_underlying(lhs) & std::to_underlying(rhs));
 }
 
 constexpr keyboard_state& operator|=(keyboard_state& lhs, keyboard_state const& rhs) noexcept
@@ -32,7 +38,7 @@ bool operator>=(keyboard_state const& lhs, keyboard_state const& rhs) = delete;
 
 [[nodiscard]] constexpr bool to_bool(keyboard_state const& rhs) noexcept
 {
-    return to_bool(to_underlying(rhs));
+    return to_bool(std::to_underlying(rhs));
 }
 
 }

@@ -3,7 +3,11 @@
 
 #pragma once
 
-namespace hi::inline v1 {
+#include "../macros.hpp"
+
+hi_export_module(hikogui.GUI : gui_window_size);
+
+hi_export namespace hi::inline v1 {
 
 enum class gui_window_size { normal, minimized, maximized, fullscreen };
 

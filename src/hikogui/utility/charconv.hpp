@@ -4,11 +4,18 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
+#include "../macros.hpp"
+#include "terminate.hpp"
+#include "exception.hpp"
 #include <concepts>
 #include <charconv>
+#include <string>
+#include <string_view>
+#include <iterator>
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.utility.charconv);
+
+hi_export namespace hi { inline namespace v1 {
 
 /** Convert integer to string.
  * This function bypasses std::locale.

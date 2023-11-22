@@ -11,29 +11,37 @@
 #include "widget_id.hpp"
 #include "gui_event_type.hpp"
 #include "gui_event_variant.hpp"
-#include "keyboard_virtual_key.hpp"
+#include "keyboard_virtual_key_intf.hpp"
 #include "keyboard_state.hpp"
 #include "keyboard_modifiers.hpp"
 #include "keyboard_focus_group.hpp"
 #include "keyboard_focus_direction.hpp"
 #include "mouse_buttons.hpp"
-#include "../unicode/grapheme.hpp"
-#include "../geometry/module.hpp"
-#include "../chrono.hpp"
+#include "hitbox.hpp"
+#include "../unicode/unicode.hpp"
+#include "../geometry/geometry.hpp"
+#include "../time/time.hpp"
+#include "../macros.hpp"
 #include <chrono>
 #include <memory>
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.GUI : gui_event);
+
+hi_export namespace hi { inline namespace v1 {
 
 /** Information for a mouse event.
  * @ingroup GUI
  */
 struct mouse_event_data {
+    /** Information about which widget is underneath the mouse pointer.
+     */ 
+    hi::hitbox hitbox = {};
+
     /** The current position of the mouse pointer.
      *
      * @note The event system will convert these in widget-local coordinates.
      */
-    point2i position = {};
+    point2 position = {};
 
     /** The position the last time a button was pressed.
      *
@@ -41,13 +49,13 @@ struct mouse_event_data {
      *
      * @note The event system will convert these in widget-local coordinates.
      */
-    point2i down_position = {};
+    point2 down_position = {};
 
     /** Change in wheel rotation, in points (pt).
      *
      * Some mice have two dimensional mouse wheels.
      */
-    vector2i wheel_delta = {};
+    vector2 wheel_delta = {};
 
     /** Buttons which have caused this event.
      */
@@ -128,7 +136,7 @@ public:
      * @param type The type of the rectangle event.
      * @param rectangle The rectangle for this event.
      */
-    gui_event(gui_event_type type, aarectanglei rectangle) noexcept :
+    gui_event(gui_event_type type, aarectangle rectangle) noexcept :
         gui_event(type, std::chrono::utc_clock::now(), keyboard_modifiers::none, keyboard_state::idle)
     {
         hi_assert(variant() == gui_event_variant::rectangle);
@@ -163,7 +171,7 @@ public:
      *
      * @param position The position where the mouse entered.
      */
-    [[nodiscard]] static gui_event make_mouse_enter(point2i position) noexcept
+    [[nodiscard]] static gui_event make_mouse_enter(point2 position) noexcept
     {
         auto r = gui_event{gui_event_type::mouse_enter};
         r.mouse().position = position;
@@ -201,7 +209,7 @@ public:
      * @param type Either `gui_event_type::text_edit_paste` or `gui_event_type::window_set_clipboard`.
      * @param text The clipboard data in text form.
      */
-    [[nodiscard]] static gui_event make_clipboard_event(gui_event_type type, std::string_view text) noexcept
+    [[nodiscard]] static gui_event make_clipboard_event(gui_event_type type, gstring_view text) noexcept
     {
         auto r = gui_event{type};
         r.clipboard_data() = text;
@@ -220,7 +228,7 @@ public:
      * @note If the variant changes of this event the associated data is cleared.
      * @param type The new type for the gui_event.
      */
-    [[nodiscard]] constexpr void set_type(gui_event_type type) noexcept
+    constexpr void set_type(gui_event_type type) noexcept
     {
         hilet previous_variant = variant();
 
@@ -240,10 +248,10 @@ public:
                 _data = keyboard_target_data{};
                 break;
             case gui_event_variant::rectangle:
-                _data = aarectanglei{};
+                _data = aarectangle{};
                 break;
             case gui_event_variant::clipboard_data:
-                _data = std::string{};
+                _data = gstring{};
             default:;
             }
         }
@@ -309,16 +317,16 @@ public:
         return std::get<hi::grapheme>(_data);
     }
 
-    [[nodiscard]] aarectanglei& rectangle() noexcept
+    [[nodiscard]] aarectangle& rectangle() noexcept
     {
         hi_assert(variant() == gui_event_variant::rectangle);
-        return std::get<aarectanglei>(_data);
+        return std::get<aarectangle>(_data);
     }
 
-    [[nodiscard]] aarectanglei const& rectangle() const noexcept
+    [[nodiscard]] aarectangle const& rectangle() const noexcept
     {
         hi_assert(variant() == gui_event_variant::rectangle);
-        return std::get<aarectanglei>(_data);
+        return std::get<aarectangle>(_data);
     }
 
     [[nodiscard]] keyboard_target_data& keyboard_target() noexcept
@@ -333,16 +341,16 @@ public:
         return std::get<keyboard_target_data>(_data);
     }
 
-    [[nodiscard]] std::string& clipboard_data() noexcept
+    [[nodiscard]] gstring& clipboard_data() noexcept
     {
         hi_assert(variant() == gui_event_variant::clipboard_data);
-        return std::get<std::string>(_data);
+        return std::get<gstring>(_data);
     }
 
-    [[nodiscard]] std::string const& clipboard_data() const noexcept
+    [[nodiscard]] gstring const& clipboard_data() const noexcept
     {
         hi_assert(variant() == gui_event_variant::clipboard_data);
-        return std::get<std::string>(_data);
+        return std::get<gstring>(_data);
     }
 
     [[nodiscard]] constexpr bool operator==(gui_event_type event_type) const noexcept
@@ -372,7 +380,7 @@ public:
 
     /** Check if this event is for a left-button-up event while the mouse pointer is in the given area.
      */
-    [[nodiscard]] constexpr bool is_left_button_up(aarectanglei active_area) const noexcept
+    [[nodiscard]] constexpr bool is_left_button_up(aarectangle active_area) const noexcept
     {
         using enum gui_event_type;
         return type() == mouse_up and mouse().cause.left_button and active_area.contains(mouse().position);
@@ -380,10 +388,10 @@ public:
 
     /** Get the location of the mouse relative to the start of a drag.
      */
-    [[nodiscard]] constexpr vector2i drag_delta() const noexcept
+    [[nodiscard]] constexpr vector2 drag_delta() const noexcept
     {
         using enum gui_event_type;
-        return type() == mouse_drag ? mouse().position - mouse().down_position : vector2i{};
+        return type() == mouse_drag ? mouse().position - mouse().down_position : vector2{};
     }
 
     /** Transform a gui-event to another coordinate system.
@@ -394,7 +402,7 @@ public:
      * @param rhs The event to transform.
      * @return The transformed event.
      */
-    [[nodiscard]] constexpr friend gui_event operator*(translate2i const& transform, gui_event const& rhs) noexcept
+    [[nodiscard]] constexpr friend gui_event operator*(translate2 const& transform, gui_event const& rhs) noexcept
     {
         auto r = rhs;
         if (rhs == gui_event_variant::mouse) {
@@ -406,7 +414,7 @@ public:
 
 private:
     using data_type =
-        std::variant<mouse_event_data, keyboard_virtual_key, keyboard_target_data, hi::grapheme, aarectanglei, std::string>;
+        std::variant<mouse_event_data, keyboard_virtual_key, keyboard_target_data, hi::grapheme, aarectangle, gstring>;
 
     gui_event_type _type;
     data_type _data;
@@ -414,10 +422,11 @@ private:
 
 }} // namespace hi::v1
 
-template<typename CharT>
-struct std::formatter<hi::gui_event, CharT> : std::formatter<std::string_view, CharT> {
-    auto format(hi::gui_event const& t, auto& fc)
+// XXX #617 MSVC bug does not handle partial specialization in modules.
+hi_export template<>
+struct std::formatter<hi::gui_event, char> : std::formatter<std::string_view, char> {
+    auto format(hi::gui_event const& t, auto& fc) const
     {
-        return std::formatter<std::string_view, CharT>::format(hi::gui_event_type_metadata[t.type()], fc);
+        return std::formatter<std::string_view, char>::format(hi::gui_event_type_metadata[t.type()], fc);
     }
 };

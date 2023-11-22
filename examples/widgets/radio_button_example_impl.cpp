@@ -2,29 +2,31 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
-#include "hikogui/module.hpp"
-#include "hikogui/GUI/gui_system.hpp"
-#include "hikogui/widgets/radio_button_widget.hpp"
+#include "hikogui/hikogui.hpp"
 #include "hikogui/crt.hpp"
-#include "hikogui/loop.hpp"
 
 using namespace hi;
 
 int hi_main(int argc, char *argv[])
 {
-    auto gui = gui_system::make_unique();
-    auto window = gui->make_window(tr("Radio button example"));
-    window->content().make_widget<label_widget>("A1", tr("radio buttons:"));
+    set_application_name("Radio button example");
+    set_application_vendor("HikoGUI");
+    set_application_version({1, 0, 0});
+
+    auto widget = std::make_unique<window_widget>(txt("Radio button example"));
+    widget->content().emplace<label_widget>("A1", txt("radio buttons:"));
 
     /// [Create three radio buttons]
     observer<int> value = 0;
 
-    window->content().make_widget<radio_button_widget>("B1", value, 1, tr("one"));
-    window->content().make_widget<radio_button_widget>("B2", value, 2, tr("two"));
-    window->content().make_widget<radio_button_widget>("B3", value, 3, tr("three"));
+    widget->content().emplace<radio_button_with_label_widget>("B1", value, 1, txt("one"));
+    widget->content().emplace<radio_button_with_label_widget>("B2", value, 2, txt("two"));
+    widget->content().emplace<radio_button_with_label_widget>("B3", value, 3, txt("three"));
     /// [Create three radio buttons]
 
-    auto close_cb = window->closing.subscribe(
+    auto window = std::make_unique<gui_window>(std::move(widget));
+
+    auto close_cbt = window->closing.subscribe(
         [&] {
             window.reset();
         },

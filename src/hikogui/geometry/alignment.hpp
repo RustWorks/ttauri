@@ -8,10 +8,16 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <optional>
+#include <algorithm>
+#include <exception>
+#include <compare>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.geometry : alignment);
+
+hi_export namespace hi { inline namespace v1 {
 
 /** Vertical alignment.
  * @ingroup geometry
@@ -54,16 +60,20 @@ enum class vertical_alignment : uint8_t {
  * @return The y-coordinate of the bottom of the guideline.
  * @retval nullopt No alignment, or guideline does not fit in the space.
  */
-template<arithmetic T>
-[[nodiscard]] constexpr std::optional<T>
-make_guideline(vertical_alignment alignment, T bottom, T top, T padding_bottom, T padding_top, T guideline_width)
+[[nodiscard]] constexpr std::optional<float> make_guideline(
+    vertical_alignment alignment,
+    float bottom,
+    float top,
+    float padding_bottom,
+    float padding_top,
+    float guideline_width)
 {
     hi_axiom(bottom <= top);
-    hi_axiom(guideline_width >= T{});
+    hi_axiom(guideline_width >= 0.0f);
 
     hilet guideline_bottom = bottom + padding_bottom;
     hilet guideline_top = top - padding_top - guideline_width;
-    hilet guideline_middle = (bottom + top - guideline_width) / T{2};
+    hilet guideline_middle = (bottom + top - guideline_width) / 2.0f;
 
     switch (alignment) {
     case vertical_alignment::none:
@@ -151,16 +161,20 @@ enum class horizontal_alignment : uint8_t {
  * @return The x-coordinate of the left of the guideline.
  * @retval std::nullopt No alignment, or guideline does not fit in the space.
  */
-template<arithmetic T>
-[[nodiscard]] constexpr std::optional<T>
-make_guideline(horizontal_alignment alignment, T left, T right, T padding_left, T padding_right, T guideline_width = T{0})
+[[nodiscard]] constexpr std::optional<float> make_guideline(
+    horizontal_alignment alignment,
+    float left,
+    float right,
+    float padding_left,
+    float padding_right,
+    float guideline_width = 0.0f)
 {
     hi_axiom(left <= right);
-    hi_axiom(guideline_width >= T{0});
+    hi_axiom(guideline_width >= 0.0f);
 
     hilet guideline_left = left + padding_left;
     hilet guideline_right = right - padding_right - guideline_width;
-    hilet guideline_center = (left + right - guideline_width) / T{2};
+    hilet guideline_center = (left + right - guideline_width) / 2.0f;
 
     switch (alignment) {
     case horizontal_alignment::none:
@@ -177,12 +191,19 @@ make_guideline(horizontal_alignment alignment, T left, T right, T padding_left, 
         } else {
             return {};
         }
+
     case horizontal_alignment::center:
         if (guideline_left <= guideline_right) {
             return std::clamp(guideline_center, guideline_left, guideline_right);
         } else {
             return {};
         }
+
+    case horizontal_alignment::flush:
+        hi_no_default();
+
+    case horizontal_alignment::justified:
+        hi_no_default();
     }
     hi_no_default();
 }
@@ -239,80 +260,80 @@ public:
     constexpr explicit alignment(uint8_t value) noexcept : _value(value) {}
 
     constexpr alignment(horizontal_alignment t, vertical_alignment v = vertical_alignment::none) noexcept :
-        _value((to_underlying(v) << 4) | to_underlying(t))
+        _value((std::to_underlying(v) << 4) | std::to_underlying(t))
     {
-        hi_axiom(to_underlying(v) <= 0xf);
-        hi_axiom(to_underlying(t) <= 0xf);
+        hi_axiom(std::to_underlying(v) <= 0xf);
+        hi_axiom(std::to_underlying(t) <= 0xf);
     }
 
     constexpr alignment(vertical_alignment v, horizontal_alignment h = horizontal_alignment::none) noexcept :
-        _value((to_underlying(v) << 4) | to_underlying(h))
+        _value((std::to_underlying(v) << 4) | std::to_underlying(h))
     {
-        hi_axiom(to_underlying(v) <= 0xf);
-        hi_axiom(to_underlying(h) <= 0xf);
+        hi_axiom(std::to_underlying(v) <= 0xf);
+        hi_axiom(std::to_underlying(h) <= 0xf);
     }
 
-    [[nodiscard]] static constexpr alignment top_flush() noexcept
+    [[nodiscard]] constexpr static alignment top_flush() noexcept
     {
         return {horizontal_alignment::flush, vertical_alignment::top};
     }
 
-    [[nodiscard]] static constexpr alignment top_left() noexcept
+    [[nodiscard]] constexpr static alignment top_left() noexcept
     {
         return {horizontal_alignment::left, vertical_alignment::top};
     }
 
-    [[nodiscard]] static constexpr alignment top_center() noexcept
+    [[nodiscard]] constexpr static alignment top_center() noexcept
     {
         return {horizontal_alignment::center, vertical_alignment::top};
     }
 
-    [[nodiscard]] static constexpr alignment top_justified() noexcept
+    [[nodiscard]] constexpr static alignment top_justified() noexcept
     {
         return {horizontal_alignment::justified, vertical_alignment::top};
     }
 
-    [[nodiscard]] static constexpr alignment top_right() noexcept
+    [[nodiscard]] constexpr static alignment top_right() noexcept
     {
         return {horizontal_alignment::right, vertical_alignment::top};
     }
 
-    [[nodiscard]] static constexpr alignment middle_flush() noexcept
+    [[nodiscard]] constexpr static alignment middle_flush() noexcept
     {
         return {horizontal_alignment::flush, vertical_alignment::middle};
     }
 
-    [[nodiscard]] static constexpr alignment middle_left() noexcept
+    [[nodiscard]] constexpr static alignment middle_left() noexcept
     {
         return {horizontal_alignment::left, vertical_alignment::middle};
     }
 
-    [[nodiscard]] static constexpr alignment middle_center() noexcept
+    [[nodiscard]] constexpr static alignment middle_center() noexcept
     {
         return {horizontal_alignment::center, vertical_alignment::middle};
     }
 
-    [[nodiscard]] static constexpr alignment middle_justified() noexcept
+    [[nodiscard]] constexpr static alignment middle_justified() noexcept
     {
         return {horizontal_alignment::justified, vertical_alignment::middle};
     }
 
-    [[nodiscard]] static constexpr alignment middle_right() noexcept
+    [[nodiscard]] constexpr static alignment middle_right() noexcept
     {
         return {horizontal_alignment::right, vertical_alignment::middle};
     }
 
-    [[nodiscard]] static constexpr alignment bottom_left() noexcept
+    [[nodiscard]] constexpr static alignment bottom_left() noexcept
     {
         return {horizontal_alignment::left, vertical_alignment::bottom};
     }
 
-    [[nodiscard]] static constexpr alignment bottom_center() noexcept
+    [[nodiscard]] constexpr static alignment bottom_center() noexcept
     {
         return {horizontal_alignment::center, vertical_alignment::bottom};
     }
 
-    [[nodiscard]] static constexpr alignment bottom_right() noexcept
+    [[nodiscard]] constexpr static alignment bottom_right() noexcept
     {
         return {horizontal_alignment::right, vertical_alignment::bottom};
     }
@@ -400,4 +421,4 @@ constexpr alignment operator|(vertical_alignment lhs, horizontal_alignment rhs) 
     return alignment{lhs, rhs};
 }
 
-} // namespace hi::inline v1
+}} // namespace hi::v1

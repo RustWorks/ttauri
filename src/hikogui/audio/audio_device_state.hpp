@@ -4,16 +4,19 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <format>
 #include <string_view>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.audio.audio_device_state);
 
-enum class audio_device_state { uninitialized, active, disabled, not_present, unplugged };
+hi_export namespace hi { inline namespace v1 {
+
+hi_export enum class audio_device_state { uninitialized, active, disabled, not_present, unplugged };
 
 // clang-format off
-constexpr auto audio_device_state_metadata = enum_metadata{
+hi_export constexpr auto audio_device_state_metadata = enum_metadata{
     audio_device_state::uninitialized, "uninitialized",
     audio_device_state::active, "active",
     audio_device_state::disabled, "disabled",
@@ -22,17 +25,18 @@ constexpr auto audio_device_state_metadata = enum_metadata{
 };
 // clang-format on
 
-[[nodiscard]] constexpr std::string_view to_string(audio_device_state const& rhs) noexcept
+hi_export [[nodiscard]] constexpr std::string_view to_string(audio_device_state const& rhs) noexcept
 {
     return audio_device_state_metadata[rhs];
 }
 
-} // namespace hi::inline v1
+}} // namespace hi::inline v1
 
-template<typename CharT>
-struct std::formatter<hi::audio_device_state, CharT> : std::formatter<std::string_view, CharT> {
-    auto format(hi::audio_device_state const& t, auto& fc)
+// XXX #617 MSVC bug does not handle partial specialization in modules.
+hi_export template<>
+struct std::formatter<hi::audio_device_state, char> : std::formatter<std::string_view, char> {
+    auto format(hi::audio_device_state const& t, auto& fc) const
     {
-        return std::formatter<std::string_view, CharT>::format(hi::audio_device_state_metadata[t], fc);
+        return std::formatter<std::string_view, char>::format(hi::audio_device_state_metadata[t], fc);
     }
 };

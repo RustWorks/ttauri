@@ -8,100 +8,42 @@
 
 #pragma once
 
-#include "file.hpp"
-#include "URL.hpp"
-#include "../void_span.hpp"
+#include "file_intf.hpp"
+#include "file_view_win32_impl.hpp"
+#include "access_mode.hpp"
+#include "../container/container.hpp"
+#include "../char_maps/char_maps.hpp" // XXX #619
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <span>
 #include <filesystem>
 #include <memory>
+
+hi_export_module(hikogui.file.file_view);
 
 hi_warning_push();
 // C26490: Don't use reinterpret_cast (type.1).
 // We need to convert bytes to chars to get a string_view from the byte buffer.
 hi_warning_ignore_msvc(26490);
 
-namespace hi { inline namespace v1 {
-
-namespace detail {
-
-class file_view_impl {
-public:
-    file_view_impl() = delete;
-    file_view_impl(file_view_impl const&) = delete;
-    file_view_impl(file_view_impl&&) = delete;
-    file_view_impl& operator=(file_view_impl const&) = delete;
-    file_view_impl& operator=(file_view_impl&&) = delete;
-
-    virtual ~file_view_impl() = default;
-    file_view_impl(std::shared_ptr<file_impl> file, std::size_t offset, std::size_t size) :
-        _file(std::move(file)), _offset(offset), _size(size)
-    {
-        if (_size == 0) {
-            _size = _file->size() - _offset;
-        }
-    }
-
-    [[nodiscard]] std::size_t offset() const noexcept
-    {
-        return _offset;
-    }
-
-    [[nodiscard]] std::size_t size() const noexcept
-    {
-        return _size;
-    }
-
-    [[nodiscard]] hi::access_mode access_mode() const noexcept
-    {
-        hi_assert_not_null(_file);
-        return _file->access_mode();
-    }
-
-    [[nodiscard]] void_span void_span() const noexcept
-    {
-        hi_assert_not_null(_file);
-        hi_assert(to_bool(_file->access_mode() & access_mode::write));
-        return {_data, _size};
-    }
-
-    [[nodiscard]] const_void_span const_void_span() const noexcept
-    {
-        return {_data, _size};
-    }
-
-    [[nodiscard]] virtual bool unmapped() const noexcept = 0;
-    virtual void flush(hi::void_span span) const noexcept = 0;
-    virtual void unmap() = 0;
-
-protected:
-    mutable std::shared_ptr<file_impl> _file;
-    std::size_t _offset;
-    std::size_t _size;
-    void *_data = nullptr;
-};
-
-} // namespace detail
+hi_export namespace hi { inline namespace v1 {
 
 /** Map a file into virtual memory.
  * @ingroup file
  *
  * To map a file into memory there are three objects needed:
  * - The `file` object which holds a handle or file descriptor to an open file on disk.
- * - The `file_mapping` object maps a section of the file in the operating system.
  * - The `file_view` object maps a section of the file-mapping into virtual memory.
- *
- * The `file_mapping` intermediate object is required on Windows systems which
- * holds a handle to a file mapping object.
  *
  */
 class file_view {
 public:
     ~file_view() = default;
     constexpr file_view() noexcept = default;
-    constexpr file_view(file_view const& other) noexcept = default;
-    constexpr file_view(file_view&& other) noexcept = default;
-    constexpr file_view& operator=(file_view const& other) noexcept = default;
-    constexpr file_view& operator=(file_view&& other) noexcept = default;
+    file_view(file_view const& other) noexcept = default;
+    file_view(file_view&& other) noexcept = default;
+    file_view& operator=(file_view const& other) noexcept = default;
+    file_view& operator=(file_view&& other) noexcept = default;
 
     /** Create a file-view from a file-mapping.
      *
@@ -111,7 +53,10 @@ public:
      *               The offset must also be a multiple of the granularity.
      * @param size The size of the mapping, if zero the full file-mapping object is mapped.
      */
-    file_view(file const& file, std::size_t offset = 0, std::size_t size = 0);
+    file_view(file const& file, std::size_t offset = 0, std::size_t size = 0) :
+        _pimpl(std::make_shared<detail::file_view_impl>(file.pimpl(), offset, size))
+    {
+    }
 
     file_view(
         std::filesystem::path const& path,

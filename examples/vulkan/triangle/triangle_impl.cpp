@@ -15,9 +15,7 @@
  */
 
 #include "triangle.hpp"
-#include "hikogui/file/URL.hpp"
-#include "hikogui/file/file_view.hpp"
-#include "hikogui/module.hpp"
+#include "hikogui/hikogui.hpp"
 #include <format>
 #include <vector>
 #include <exception>
@@ -28,12 +26,12 @@
     do { \
         VkResult res = (f); \
         if (res != VK_SUCCESS) { \
-            std::cerr << std::format("Vulkan error {}", hi::to_underlying(res)) << std::endl; \
+            std::cerr << std::format("Vulkan error {}", std::to_underlying(res)) << std::endl; \
             std::terminate(); \
         } \
     } while (false)
 
-[[nodiscard]] constexpr static bool operator==(VkRect2D const& lhs, VkRect2D const& rhs) noexcept
+[[nodiscard]] constexpr bool operator==(VkRect2D const& lhs, VkRect2D const& rhs) noexcept
 {
     return lhs.offset.x == rhs.offset.x and lhs.offset.y == rhs.offset.y and lhs.extent.width == rhs.extent.width and
         lhs.extent.height == rhs.extent.height;
@@ -681,7 +679,7 @@ void TriangleExample::createPipeline()
     // Set pipeline stage for this shader
     shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
     // Load binary SPIR-V shader
-    shaderStages[0].module = loadSPIRVShader(hi::URL{"resource:shaders/triangle.vert.spv"});
+    shaderStages[0].module = loadSPIRVShader(hi::URL{"resource:triangle.vert.spv"});
     // Main entry point for the shader
     shaderStages[0].pName = "main";
     assert(shaderStages[0].module != VK_NULL_HANDLE);
@@ -691,7 +689,7 @@ void TriangleExample::createPipeline()
     // Set pipeline stage for this shader
     shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     // Load binary SPIR-V shader
-    shaderStages[1].module = loadSPIRVShader(hi::URL{"resource:shaders/triangle.frag.spv"});
+    shaderStages[1].module = loadSPIRVShader(hi::URL{"resource:triangle.frag.spv"});
     // Main entry point for the shader
     shaderStages[1].pName = "main";
     assert(shaderStages[1].module != VK_NULL_HANDLE);
@@ -921,9 +919,9 @@ void TriangleExample::render(
         auto viewPortSize =
             hi::extent2{hi::narrow_cast<float>(viewPort.extent.width), hi::narrow_cast<float>(viewPort.extent.height)};
 
-        auto projection = hi::perspective3{hi::to_radian(60.0f), viewPortSize, 1.0f, 256.0f};
-        auto view = hi::lookat3{hi::point3{0.0f, 0.0f, -3.5f}, hi::point3{}};
-        auto model = hi::identity3{};
+        auto projection = hi::perspective{hi::to_radian(60.0f), viewPortSize, 1.0f, 256.0f};
+        auto view = hi::lookat{hi::point3{0.0f, 0.0f, -3.5f}, hi::point3{}};
+        auto model = hi::matrix3{};
 
         auto projection_m = static_cast<hi::matrix3>(projection);
         auto view_m = static_cast<hi::matrix3>(view);

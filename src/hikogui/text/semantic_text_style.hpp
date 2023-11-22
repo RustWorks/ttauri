@@ -4,9 +4,14 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
+#include <string_view>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.text.semantic_text_style);
+
+
+hi_export namespace hi::inline v1 {
 
 enum class semantic_text_style : unsigned char { label, small_label, warning, error, help, placeholder, link };
 

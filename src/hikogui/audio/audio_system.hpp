@@ -5,25 +5,26 @@
 #pragma once
 
 #include "audio_device.hpp"
-#include "../utility/module.hpp"
-#include "../generator.hpp"
+#include "../utility/utility.hpp"
+#include "../coroutine/coroutine.hpp"
+#include "../macros.hpp"
 #include <vector>
 #include <memory>
+#include <concepts>
+#include <coroutine>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.audio.audio_system);
+
+hi_export namespace hi { inline namespace v1 {
 
 /*! An system of audio devices.
  * Systems are for example: Window Audio Session API (WASAPI), ASIO, Apple CoreAudio
  */
-class audio_system {
+hi_export class audio_system {
 public:
-    using notifier_type = notifier<>;
-    using callback_token = notifier_type::callback_token;
-    using callback_proto = notifier_type::callback_proto;
-
     /** Create an audio system object specific for the current operating system.
      */
-    [[nodiscard]] static std::unique_ptr<audio_system> make_unique() noexcept;
+    [[nodiscard]] static audio_system &global() noexcept;
 
     audio_system() = default;
     virtual ~audio_system() = default;
@@ -45,18 +46,66 @@ public:
      *
      * @return A callback token, a RAII object which when destroyed removes the subscription.
      */
-    callback_token subscribe(forward_of<callback_proto> auto&& func, callback_flags flags = callback_flags::synchronous) noexcept
+    template<forward_of<void()> Func>
+    [[nodiscard]] callback<void()> subscribe(Func&& func, callback_flags flags = callback_flags::synchronous) noexcept
     {
-        return _notifier.subscribe(hi_forward(func), flags);
+        return _notifier.subscribe(std::forward<Func>(func), flags);
     }
 
-    auto operator co_await() noexcept
+    auto operator co_await() const noexcept
     {
         return _notifier.operator co_await();
     }
 
 protected:
-    notifier_type _notifier;
+    notifier<void()> _notifier;
 };
 
-} // namespace hi::inline v1
+namespace detail {
+hi_inline std::unique_ptr<audio_system> audio_system_global;
+}
+
+template<typename Context>
+concept audio_device_filter = std::same_as<Context, audio_device_state> or std::same_as<Context, audio_direction>;
+
+[[nodiscard]] constexpr bool match_audio_device(audio_device const &device) noexcept
+{
+    return true;
+}
+
+template<audio_device_filter FirstFilter, audio_device_filter... Filters>
+[[nodiscard]] hi_inline bool match_audio_device(audio_device const &device, FirstFilter &&first_filter, Filters &&...filters) noexcept
+{
+    if constexpr (std::same_as<FirstFilter, audio_device_state>) {
+        if (device.state() != first_filter) {
+            return false;
+        }
+    } else if constexpr (std::same_as<FirstFilter, audio_direction>) {
+        if (not to_bool(device.direction() & first_filter)) {
+            return false;
+        }
+    } else {
+        hi_static_no_default();
+    }
+
+    return match_audio_device(device, std::forward<Filters>(filters)...);
+}
+
+/** Get audio devices matching the filter arguments.
+ * 
+ * @param filters A list of filters that the audio devices need to match with.
+ *                Filters are of the types `hi::audio_device_state` and
+ *                `hi::audio_direction`.
+ * @return A list of audio devices matching the filters.
+ */
+template<audio_device_filter... Filters>
+[[nodiscard]] generator<audio_device &> audio_devices(Filters &&...filters) noexcept
+{
+    for (auto &device: audio_system::global().devices()) {
+        if (match_audio_device(device, std::forward<Filters>(filters)...)) {
+            co_yield device;
+        }
+    }
+}
+
+}} // namespace hi::inline v1

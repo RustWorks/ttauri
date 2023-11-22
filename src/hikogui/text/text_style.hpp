@@ -5,24 +5,25 @@
 #pragma once
 
 #include "text_decoration.hpp"
-#include "text_phrasing.hpp"
 #include "semantic_text_style.hpp"
-#include "../color/module.hpp"
-#include "../i18n/iso_15924.hpp"
-#include "../i18n/iso_639.hpp"
-#include "../utility/module.hpp"
-#include "../font/module.hpp"
-#include "../log.hpp"
-#include "../stable_set.hpp"
+#include "../color/color.hpp"
+#include "../i18n/i18n.hpp"
+#include "../unicode/unicode.hpp"
+#include "../utility/utility.hpp"
+#include "../font/font.hpp"
+#include "../telemetry/telemetry.hpp"
+#include "../container/container.hpp"
+#include "../macros.hpp"
 #include <ostream>
 #include <vector>
 #include <algorithm>
 
-namespace hi::inline v1 {
-class font_book;
+hi_export_module(hikogui.text.text_style);
+
+hi_export namespace hi::inline v1 {
 
 struct text_sub_style {
-    text_phrasing_mask phrasing_mask;
+    phrasing_mask phrasing_mask;
     iso_639 language_filter;
     iso_15924 script_filter;
 
@@ -35,7 +36,7 @@ struct text_sub_style {
     text_sub_style() noexcept = default;
 
     text_sub_style(
-        text_phrasing_mask phrasing_mask,
+        hi::phrasing_mask phrasing_mask,
         iso_639 language_filter,
         iso_15924 script_filter,
         font_family_id family_id,
@@ -57,7 +58,7 @@ struct text_sub_style {
     [[nodiscard]] size_t hash() const noexcept
     {
         auto r = 0_uz;
-        r ^= std::hash<text_phrasing_mask>{}(phrasing_mask);
+        r ^= std::hash<hi::phrasing_mask>{}(phrasing_mask);
         r ^= std::hash<iso_639>{}(language_filter);
         r ^= std::hash<iso_15924>{}(script_filter);
         r ^= std::hash<font_family_id>{}(family_id);
@@ -68,12 +69,21 @@ struct text_sub_style {
         return r;
     }
 
-    [[nodiscard]] float cap_height(font_book const& font_book) const noexcept;
-    [[nodiscard]] float x_height(font_book const& font_book) const noexcept;
-
-    [[nodiscard]] bool matches(text_phrasing phrasing, iso_639 language, iso_15924 script) const noexcept
+    [[nodiscard]] float cap_height() const noexcept
     {
-        if (not to_bool(phrasing_mask & to_text_phrasing_mask(phrasing))) {
+        hilet& font = find_font(family_id, variant);
+        return font.metrics.cap_height * size;
+    }
+
+    [[nodiscard]] float x_height() const noexcept
+    {
+        hilet& font = find_font(family_id, variant);
+        return font.metrics.x_height * size;
+    }
+
+    [[nodiscard]] bool matches(phrasing phrasing, iso_639 language, iso_15924 script) const noexcept
+    {
+        if (not to_bool(phrasing_mask & to_phrasing_mask(phrasing))) {
             return false;
         }
         if (language_filter and language and language_filter != language) {
@@ -98,7 +108,7 @@ struct std::hash<hi::text_sub_style> {
     }
 };
 
-namespace hi::inline v1::detail {
+hi_export namespace hi::inline v1::detail {
 
 struct text_style_impl {
     using value_type = text_sub_style;
@@ -165,9 +175,9 @@ struct std::hash<hi::detail::text_style_impl> {
     }
 };
 
-namespace hi::inline v1 {
+hi_export namespace hi::inline v1 {
 namespace detail {
-inline auto text_styles = stable_set<text_style_impl>{};
+hi_inline auto text_styles = stable_set<text_style_impl>{};
 }
 
 class text_style {
@@ -181,7 +191,7 @@ public:
     constexpr text_style& operator=(text_style&&) noexcept = default;
     [[nodiscard]] constexpr friend bool operator==(text_style const&, text_style const&) noexcept = default;
 
-    constexpr text_style(semantic_text_style rhs) noexcept : _value(0xff00 + to_underlying(rhs)) {}
+    constexpr text_style(semantic_text_style rhs) noexcept : _value(0xff00 + std::to_underlying(rhs)) {}
 
     text_style(std::vector<text_sub_style> rhs) noexcept
     {
@@ -236,13 +246,14 @@ public:
         }
     }
 
-    text_sub_style const& sub_style(text_phrasing phrasing, iso_639 language, iso_15924 script) const noexcept
+    text_sub_style const& sub_style(phrasing phrasing, iso_639 language, iso_15924 script) const noexcept
     {
         for (hilet& style : detail::text_styles[_value]) {
             if (style.matches(phrasing, language, script)) {
                 return style;
             }
         }
+        hi_no_default();
     }
 
 private:

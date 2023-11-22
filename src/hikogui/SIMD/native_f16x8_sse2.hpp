@@ -3,15 +3,44 @@
 #pragma once
 
 #include "native_simd_utility.hpp"
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
+#include <span>
+#include <array>
+#include <ostream>
 
-namespace hi {
+#ifdef HI_HAS_SSE
+#include <xmmintrin.h>
+#endif
+#ifdef HI_HAS_SSE2
+#include <emmintrin.h>
+#endif
+#ifdef HI_HAS_SSE3
+#include <pmmintrin.h>
+#endif
+#ifdef HI_HAS_SSSE3
+#include <tmmintrin.h>
+#endif
+#ifdef HI_HAS_SSE4_1
+#include <smmintrin.h>
+#endif
+#ifdef HI_HAS_SSE4_2
+#include <nmmintrin.h>
+#endif
+#ifdef HI_HAS_AVX
+#include <immintrin.h>
+#endif
+
+hi_export_module(hikogui.SIMD : native_f16x8_sse2);
+
+
+hi_export namespace hi {
 inline namespace v1 {
 
 #ifdef HI_HAS_SSE2
 
 
-/** A float16 x 8 (__m128i) SSE2 register.
+/** A half x 8 (__m128i) SSE2 register.
  *
  *
  * When loading and storing from memory this is the order of the element in the register
@@ -28,8 +57,8 @@ inline namespace v1 {
  *
  */
 template<>
-struct native_simd<float16,8> {
-    using value_type = float16;
+struct native_simd<half,8> {
+    using value_type = half;
     constexpr static size_t size = 8;
     using register_type = __m128i;
 
@@ -163,14 +192,14 @@ struct native_simd<float16,8> {
         hi_axiom(mask <= 0b1111'1111);
 
         return native_simd{
-            mask & 0b0000'0001 ? value_type{} : value_type::from_uint16_t(0xffff),
-            mask & 0b0000'0010 ? value_type{} : value_type::from_uint16_t(0xffff),
-            mask & 0b0000'0100 ? value_type{} : value_type::from_uint16_t(0xffff),
-            mask & 0b0000'1000 ? value_type{} : value_type::from_uint16_t(0xffff),
-            mask & 0b0001'0000 ? value_type{} : value_type::from_uint16_t(0xffff),
-            mask & 0b0010'0000 ? value_type{} : value_type::from_uint16_t(0xffff),
-            mask & 0b0100'0000 ? value_type{} : value_type::from_uint16_t(0xffff),
-            mask & 0b1000'0000 ? value_type{} : value_type::from_uint16_t(0xffff)};
+            mask & 0b0000'0001 ? value_type{} : value_type(intrinsic, 0xffff),
+            mask & 0b0000'0010 ? value_type{} : value_type(intrinsic, 0xffff),
+            mask & 0b0000'0100 ? value_type{} : value_type(intrinsic, 0xffff),
+            mask & 0b0000'1000 ? value_type{} : value_type(intrinsic, 0xffff),
+            mask & 0b0001'0000 ? value_type{} : value_type(intrinsic, 0xffff),
+            mask & 0b0010'0000 ? value_type{} : value_type(intrinsic, 0xffff),
+            mask & 0b0100'0000 ? value_type{} : value_type(intrinsic, 0xffff),
+            mask & 0b1000'0000 ? value_type{} : value_type(intrinsic, 0xffff)};
     }
 
     /** Concatonate the top bit of each element.

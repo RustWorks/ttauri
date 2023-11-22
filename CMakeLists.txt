@@ -1,16 +1,15 @@
-# Copyright Jens A. Koch 2021-2022.
+# Copyright Jens A. Koch 2021-2023.
 # Copyright Take Vos 2019-2022.
 # Distributed under the Boost Software License, Version 1.0.
 # (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
-
 cmake_minimum_required(VERSION 3.25)
+
 #-------------------------------------------------------------------
 # Configure early CMAKE paths
 #-------------------------------------------------------------------
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
-include(SetupVcpkg)
-include(SetupCompiler)
 
 #-------------------------------------------------------------------
 # Build Options
@@ -19,8 +18,14 @@ include(SetupCompiler)
 option(BUILD_SHARED_LIBS    "Build shared libraries"                             OFF)
 option(HI_ENABLE_ANALYSIS   "Compile using -analyze"                             OFF)
 option(HI_ENABLE_ASAN       "Compile using address sanitizer"                    OFF)
-option(HI_ENABLE_PCH        "Compile with precompiled headers"                   ON)
-option(HI_ARCHITECTURE      "The architecture to build the hikogui library with" "")
+option(HI_ENABLE_MODULES    "Compile using C++20 modules"                        OFF)
+option(BUILD_EXAMPLES       "Compile the example executables"                    ON)
+        
+if(HI_ENABLE_MODULES)
+    include(SetupCxxModules)
+endif()
+include(SetupVcpkg)
+include(SetupCompiler)
 
 #-------------------------------------------------------------------
 # Project
@@ -40,27 +45,58 @@ string(JSON HI_LIB_LICENSE  GET ${VCPKG_JSON_STRING} "license")
 string(JSON HI_LIB_DESC     GET ${VCPKG_JSON_STRING} "description")
 string(JSON HI_LIB_HOMEPAGE GET ${VCPKG_JSON_STRING} "homepage")
 
-configure_file("package.json.in" "package.json" @ONLY)
+configure_file("${CMAKE_SOURCE_DIR}/CMake/packaging/package.json.in" "package.json" @ONLY)
 file(READ ${CMAKE_CURRENT_BINARY_DIR}/package.json PACKAGE_JSON_STRING)
 string(JSON HI_LIB_DISPLAY_NAME GET ${PACKAGE_JSON_STRING} "display-name")
 string(JSON HI_LIB_VENDOR GET ${PACKAGE_JSON_STRING} "vendor")
 
 project(${HI_LIB_NAME} VERSION ${HI_LIB_VERSION} LANGUAGES ${LANGUAGES})
-set(CMAKE_EXPERIMENTAL_CXX_MODULE_DYNDEP 0)
-set(CMAKE_EXPERIMENTAL_CXX_SCANDEP_SOURCE 0)
-set(CMAKE_CXX_SCAN_FOR_MODULES 0)
+
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
+    set(ARCHITECTURE_ID "x86")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "X86")
+    set(ARCHITECTURE_ID "x86")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86")
+    set(ARCHITECTURE_ID "x86")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64")
+    set(ARCHITECTURE_ID "x86")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x64")
+    set(ARCHITECTURE_ID "x86")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "i386")
+    set(ARCHITECTURE_ID "x86")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "i686")
+    set(ARCHITECTURE_ID "x86")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm")
+    set(ARCHITECTURE_ID "arm")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+    set(ARCHITECTURE_ID "arm")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+    set(ARCHITECTURE_ID "arm")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+    set(ARCHITECTURE_ID "arm")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "armv8b")
+    set(ARCHITECTURE_ID "arm")
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "armv8l")
+    set(ARCHITECTURE_ID "arm")
+else()
+    message(FATAL_ERROR "Unknown CMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}")
+endif()
 
 #-------------------------------------------------------------------
 # Setup CMake Includes
 #-------------------------------------------------------------------
 
-include(AddShader)
+include(FeatureSummary)
 include(ShowBuildTargetProperties)
 include(FetchContent)
-include(CPUID)
+include(SetupDoxygen)
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+include(TargetResources)
 
 # disable adding CTest build targets like "NightlyStart" (before ctest include)
 set_property(GLOBAL PROPERTY CTEST_TARGETS_ADDED 1)
+configure_file("${CMAKE_SOURCE_DIR}/cmake/ctest/CTestCustom.cmake.in" "CTestCustom.cmake" @ONLY)
 include(CTest)
 
 #-------------------------------------------------------------------
@@ -104,76 +140,84 @@ endif()
 # Setup Build Targets
 #-------------------------------------------------------------------
 
-add_library(hikogui)
-set(HIKOGUI_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/hikogui")
-include(CMakeLists_includes.cmake)
-include(CMakeLists_implementations.cmake)
-if(HI_ENABLE_PCH)
-    include(CMakeLists_pch.cmake)
-endif()
-set_target_properties(hikogui PROPERTIES DEBUG_POSTFIX "d")
-
-#-------------------------------------------------------------------
-# Setup Sources
-#-------------------------------------------------------------------
-
-# This needs to be below the build target commands (add_*).
-# We omit adding source files to the `add_*` commands, but add them
-# later using target_sources() in CMakeLists of subdirectories.
-
-add_subdirectory(src/hikogui)
-
 #-------------------------------------------------------------------
 # Build Target: hikogui                                     (library)
 #-------------------------------------------------------------------
+if(HI_ENABLE_MODULES)
+    set(HI_SCOPE "PUBLIC")
+    add_library(hikogui)
+else()
+    set(HI_SCOPE "INTERFACE")
+    add_library(hikogui INTERFACE)
+endif()
 
-target_compile_features(hikogui PUBLIC cxx_std_20)
+set(HIKOGUI_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/hikogui")
+if(HI_ENABLE_MODULES)
+    include(CMakeLists_modules.cmake)
+else()
+    include(CMakeLists_includes.cmake)
+endif()
+include(CMakeLists_resources.cmake)
+include(CMakeLists_shaders.cmake)
 
+target_compile_features(hikogui ${HI_SCOPE} cxx_std_23)
+set_target_properties(hikogui PROPERTIES DEBUG_POSTFIX "d")
 set_target_properties(hikogui PROPERTIES VERSION ${HIKOGUI_PROJECT_VERSION_SHORT} SOVERSION ${HIKOGUI_MAJOR_VERSION})
-set_target_properties(hikogui PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+set_target_properties(hikogui PROPERTIES FRAMEWORK TRUE)
+set_target_properties(hikogui PROPERTIES MACOSX_FRAMEWORK_IDENTIFIER org.hikogui.hikogui)   
 
 if(APPLE)
-    target_link_libraries(hikogui PUBLIC "-framework Foundation -framework AppKit")
+    target_link_libraries(hikogui ${HI_SCOPE} "-framework Foundation -framework AppKit")
 endif()
 if(WIN32)
-	target_link_libraries(hikogui PUBLIC "ws2_32")
-	target_link_libraries(hikogui PUBLIC "DXGI")
-	target_link_libraries(hikogui PUBLIC "bcrypt")
-	target_link_libraries(hikogui PUBLIC "winmm")
-	target_link_libraries(hikogui PUBLIC "dwmapi")
+	target_link_libraries(hikogui ${HI_SCOPE} "ws2_32")
+	target_link_libraries(hikogui ${HI_SCOPE} "DXGI")
+	target_link_libraries(hikogui ${HI_SCOPE} "bcrypt")
+	target_link_libraries(hikogui ${HI_SCOPE} "winmm")
+	target_link_libraries(hikogui ${HI_SCOPE} "dwmapi")
 endif()
 
 # Add the Vulkan libraries.
-target_link_libraries(hikogui PUBLIC ${Vulkan_LIBRARIES})
-target_include_directories(hikogui PUBLIC ${Vulkan_INCLUDE_DIRS})
+target_link_libraries(hikogui ${HI_SCOPE} ${Vulkan_LIBRARIES})
+target_include_directories(hikogui ${HI_SCOPE} ${Vulkan_INCLUDE_DIRS})
+
+# HikoGUI only uses Vulkan-1.2; we can limit VMA to that version as well.
+# This solves a common issue with: "Cant find entrypoint for vkGetDeviceBufferMemoryRequirements procedure"
+target_compile_definitions(hikogui ${HI_SCOPE} -DVMA_VULKAN_VERSION=1002000)
 if (WIN32)
     # Add vulkan win32 surface support.
-    target_compile_definitions(hikogui PUBLIC -DVK_USE_PLATFORM_WIN32_KHR)
+    target_compile_definitions(hikogui ${HI_SCOPE} -DVK_USE_PLATFORM_WIN32_KHR)
 
     # vulkan.h will include the windows headers, so we must define all sorts of stuff on the command line.
-    target_compile_definitions(hikogui PUBLIC -DUNICODE)
-    target_compile_definitions(hikogui PUBLIC -D_UNICODE)
-    target_compile_definitions(hikogui PUBLIC -D_CRT_SECURE_NO_WARNINGS)
-    target_compile_definitions(hikogui PUBLIC -DNOMINMAX)
-    target_compile_definitions(hikogui PUBLIC -DWIN32_LEAN_AND_MEAN)
-    target_compile_definitions(hikogui PUBLIC -DWIN32_NO_STATUS)
+    target_compile_definitions(hikogui ${HI_SCOPE} -DUNICODE)
+    target_compile_definitions(hikogui ${HI_SCOPE} -D_UNICODE)
+    target_compile_definitions(hikogui ${HI_SCOPE} -D_CRT_SECURE_NO_WARNINGS)
+    target_compile_definitions(hikogui ${HI_SCOPE} -DNOMINMAX)
+    target_compile_definitions(hikogui ${HI_SCOPE} -DWIN32_LEAN_AND_MEAN)
+    target_compile_definitions(hikogui ${HI_SCOPE} -DWIN32_NO_STATUS)
 
     # Minimum Windows 10.
-    target_compile_definitions(hikogui PUBLIC -DWINVER=0x0a00)
-    target_compile_definitions(hikogui PUBLIC -D_WIN32_WINNT=0x0a00)
+    target_compile_definitions(hikogui ${HI_SCOPE} -DWINVER=0x0a00)
+    target_compile_definitions(hikogui ${HI_SCOPE} -D_WIN32_WINNT=0x0a00)
 
 elseif (APPLE)
     # Add vulkan apple's Metal surface support.
-    target_compile_definitions(hikogui PUBLIC -DVK_USE_PLATFORM_METAL_EXT)
+    target_compile_definitions(hikogui ${HI_SCOPE} -DVK_USE_PLATFORM_METAL_EXT)
 endif()
 
-
-target_include_directories(hikogui PUBLIC
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
-    "$<INSTALL_INTERFACE:include>"
-)
-target_include_directories(hikogui PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_include_directories(hikogui PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/src)
+if(HI_ENABLE_MODULES)
+    target_include_directories(hikogui ${HI_SCOPE}
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mod>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/mod/hikogui/metadata>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mod/hikogui/metadata>"
+        "$<INSTALL_INTERFACE:include>")
+else()
+    target_include_directories(hikogui ${HI_SCOPE}
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src/hikogui/metadata>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/hikogui/metadata>"
+        "$<INSTALL_INTERFACE:include>")
+endif()
 
 #
 # We will support the following CPUs:
@@ -183,108 +227,117 @@ target_include_directories(hikogui PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/src)
 if (${CMAKE_CXX_COMPILER_ID} MATCHES Clang)
     # Set the execution character encoding to UTF-8
     if (MSVC)
-        target_compile_options(hikogui PUBLIC -utf-8)
+        target_compile_options(hikogui ${HI_SCOPE} -utf-8)
     else()
-        target_compile_options(hikogui PUBLIC -fexec-charset=UTF-8)
+        target_compile_options(hikogui ${HI_SCOPE} -fexec-charset=UTF-8)
+        target_compile_options(hikogui ${HI_SCOPE} -finput-charset=UTF-8)
     endif()
 
     # Clang will complain about __builtin_assume even on constexpr functions and operators,
     # this warning is absolutely useless.
-    target_compile_options(hikogui PUBLIC -Wno-assume)
+    target_compile_options(hikogui ${HI_SCOPE} -Wno-assume)
+
+    # Clang knows [[no_unique_address]] but since win32-ABI does not
+    # support [[no_unique_address] clang pretends it does not know the attribute.
+    target_compile_options(hikogui ${HI_SCOPE} -Wno-unknown-attributes)
 
     # Clang will complain about calling hidden-friend-template-functions.
-    target_compile_options(hikogui PUBLIC -Wno-unknown-warning-option -Wno-c++20-extensions -Wno-c++2a-extensions)
+    target_compile_options(hikogui ${HI_SCOPE} -Wno-unknown-warning-option -Wno-c++20-extensions -Wno-c++2a-extensions)
 
     # vk_mem_alloc.h seems to turn on nullability completeness checks on clang.
     # It seems this check should only be used for interopability with swift
-    target_compile_options(hikogui PUBLIC -Wno-nullability-completeness)
+    target_compile_options(hikogui ${HI_SCOPE} -Wno-nullability-completeness)
 
-    target_compile_options(hikogui PUBLIC -march=${HI_ARCHITECTURE})
+    # warning: template argument for template type parameter must be a type; omitted 'typename' is a Microsoft extension
+    # Very likely this is because clang does not support C++20 fully "down with typename".
+    target_compile_options(hikogui ${HI_SCOPE} -Wno-microsoft-template)
 
-    # The Microsoft version of clang does not implement all clang command line arguments.
-    if (NOT MSVC)
+    if (MSVC)
+        # Options specific for clang-cl.
+
         # The hikogui generic tokenizer uses large constexpr tables.
-        target_compile_options(hikogui PUBLIC -fconstexpr-steps=100000000)
+        target_compile_options(hikogui ${HI_SCOPE} "SHELL:-Xclang -fconstexpr-steps -Xclang 100000000")
+
+    else()
+        # Normal clang.
+
+        # The hikogui generic tokenizer uses large constexpr tables.
+        target_compile_options(hikogui ${HI_SCOPE} -fconstexpr-steps=100000000)
 
         # Tune according to a more modern CPU.
-        target_compile_options(hikogui PUBLIC -mtune=skylake)
+        target_compile_options(hikogui ${HI_SCOPE} -mtune=skylake)
     endif()
 
 elseif (MSVC)
-    if("${HI_ARCHITECTURE}" STREQUAL "x86-64-v4")
-        target_compile_options(hikogui PUBLIC -arch:AVX512)
-    elseif("${HI_ARCHITECTURE}" STREQUAL "x86-64-v3")
-        target_compile_options(hikogui PUBLIC -arch:AVX2)
-    elseif("${HI_ARCHITECTURE}" STREQUAL "x86-64-v2")
-        target_compile_options(hikogui PUBLIC -arch:AVX)
-    endif()
-
     # Turn on a lot of warnings by default.
-    target_compile_options(hikogui PUBLIC -W4)
+    target_compile_options(hikogui ${HI_SCOPE} -W4)
 
     # Set the compiler to C++20 standard conforming as much as possible.
-    target_compile_options(hikogui PUBLIC -permissive-)
+    target_compile_options(hikogui ${HI_SCOPE} -permissive-)
 
     # suppress msbuild startup banner
-    target_compile_options(hikogui PUBLIC -nologo)
+    target_compile_options(hikogui ${HI_SCOPE} -nologo)
 
     # By default MSVC reports a incorrect version in __cplusplus
     # This option will make it work correctly.
-    target_compile_options(hikogui PUBLIC -Zc:__cplusplus)
+    target_compile_options(hikogui ${HI_SCOPE} -Zc:__cplusplus)
 
     # Use the C++20 compliant preprocessor, which include __VA_OPT__()
     # This causes warning "C5105: macro expansion producing 'defined' has undefined behavior" in winbase.h
     # which is supposed to be fixed in a newer version of the SDK.
-    target_compile_options(hikogui PUBLIC -Zc:preprocessor)
-    target_compile_options(hikogui PUBLIC -wd5105)
+    target_compile_options(hikogui ${HI_SCOPE} -Zc:preprocessor)
+    #target_compile_options(hikogui ${HI_SCOPE} -wd5105)
 
     # Set the execution and source character encoding to UTF-8
-    target_compile_options(hikogui PUBLIC -utf-8)
+    target_compile_options(hikogui ${HI_SCOPE} -utf-8)
 
     # The hikogui generic tokenizer uses large constexpr tables.
-    target_compile_options(hikogui PUBLIC "-constexpr:steps100000000")
+    target_compile_options(hikogui ${HI_SCOPE} "-constexpr:steps100000000")
+
+    # The library is too big.
+    target_compile_options(hikogui ${HI_SCOPE} "-bigobj")
 
     # C4068: unknown pragma.
     # Ignore unknown pragmas, needed for other compilers.
-    target_compile_options(hikogui PUBLIC -wd4068)
+    target_compile_options(hikogui ${HI_SCOPE} -wd4068)
 
     # C4324: structure was padded due to alignment specifier.
     # Of course it is, that is what the alignment specifier is used for??????
-    target_compile_options(hikogui PUBLIC -wd4324)
+    target_compile_options(hikogui ${HI_SCOPE} -wd4324)
 
     # C4100: unreferenced formal parameter.
     # This warning is in the way when you want to document a parameter of a virtual function
     # with an implementation that does not use the parameter.
-    target_compile_options(hikogui PUBLIC -wd4100)
+    target_compile_options(hikogui ${HI_SCOPE} -wd4100)
 
     # C4127: conditional expression is constant.
     # False positive with expressions that include template parameters.
-    target_compile_options(hikogui PUBLIC -wd4127)
+    target_compile_options(hikogui ${HI_SCOPE} -wd4127)
 
     # C6326: Potential comparison of a constant with another constant.
     # False positive in constexpr context.
-    target_compile_options(hikogui PUBLIC -wd6326)
+    target_compile_options(hikogui ${HI_SCOPE} -wd6326)
 
     # C6239: (<non-zero constant> && <expression>) always evaluates to the result of <expression>. Did you intend to use the bitwise-and operator?"
     # False positive when using logical operators in constexpr context.
-    target_compile_options(hikogui PUBLIC -wd6239)
+    target_compile_options(hikogui ${HI_SCOPE} -wd6239)
 
     # C6262: Function uses 'x' bytes of stack: exceeds /analyze:stacksize 'x'. Consider moving some data to heap.
     # False positives when returning data from a function in constexpr context.
-    target_compile_options(hikogui PUBLIC -wd6262)
+    target_compile_options(hikogui ${HI_SCOPE} -wd6262)
 
     # C4505: unreferenced local function has been removed.
     # False positive when calling a local function from within a "if constexpr" block.
-    target_compile_options(hikogui PUBLIC -wd4505)
+    target_compile_options(hikogui ${HI_SCOPE} -wd4505)
 
     # C4648: standard attribute 'no_unique_address' is ignored
-    target_compile_options(hikogui PUBLIC -wd4648)
+    target_compile_options(hikogui ${HI_SCOPE} -wd4648)
 
     # C4744: 'x' has different type in 'foo_impl.cpp' and 'bar_impl.cpp':
     #        'struct (8 bytes)' and '__declspec(align(8)) struct (8 bytes)' [foobar.vcxproj]
     # Bug in linker where atomic variables defined in a header file and used in two _impl.cpp files be
     # interpreted as different types. Microsoft knows about the bug for many years.
-    target_link_options(hikogui PUBLIC "/ignore:4744")
+    target_link_options(hikogui ${HI_SCOPE} "/ignore:4744")
 
     if (${CMAKE_BUILD_TYPE} MATCHES "Debug")
         # Enable Security Development Lifecycle checks.
@@ -292,23 +345,20 @@ elseif (MSVC)
         # Do include it with ReleaseWithDebug.
 
         # -sdl forces deprecated warnings as errors so also not useful during development.
-        #target_compile_options(hikogui PUBLIC -sdl)
+        #target_compile_options(hikogui ${HI_SCOPE} -sdl)
 
         # Just my code enables the VS debugger to step over system, framework, library, and other non-user calls.
-        target_compile_options(hikogui PUBLIC -JMC)
-
-        # The debugger can't watch variables that are part of NRVO (named return value optimization) even in debugging.
-        target_compile_options(hikogui PUBLIC -Zc:nrvo-)
+        target_compile_options(hikogui ${HI_SCOPE} -JMC)
     endif()
 
     if(HI_ENABLE_ASAN)
-        target_compile_options(hikogui PUBLIC -fsanitize=address)
+        target_compile_options(hikogui ${HI_SCOPE} -fsanitize=address)
     endif()
 
     if(HI_ENABLE_ANALYSIS)
-        target_compile_options(hikogui PUBLIC -analyze)
+        target_compile_options(hikogui ${HI_SCOPE} -analyze)
 
-        #target_compile_options(hikogui PUBLIC -analyze:ruleset ${CMAKE_CURRENT_SOURCE_DIR}/AllRules.ruleset)
+        #target_compile_options(hikogui ${HI_SCOPE} -analyze:ruleset ${CMAKE_CURRENT_SOURCE_DIR}/AllRules.ruleset)
 
         # The Core Guidelines checker, not so useful for real programs.
         message(NOTICE "The following environment variables need to be set for the core guidelines checker to work:")
@@ -316,186 +366,91 @@ elseif (MSVC)
         message(NOTICE "    esp.annotationbuildlevel=ignore")
         message(NOTICE "    CAExcludePath=C:\\VulkanSDK;C:\\Program Files;C:\\Users\\Tjienta\\Projects\\hikogui\\out\\build\\vc17-x64-windows-static-ana\\_deps")
         message(NOTICE "")
-        target_compile_options(hikogui PUBLIC -analyze:plugin EspXEngine.dll)
+        target_compile_options(hikogui ${HI_SCOPE} -analyze:plugin EspXEngine.dll)
 
         # C26440: Function '...' can be declared 'noexcept' (f.6).
         # It requires lambda function to also be declared 'noexcept' that makes the code messy.
-        target_compile_options(hikogui PUBLIC -wd26440)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26440)
 
         # C26446: Prefer to use gsl::at() instead of unchecked subscript operator (bounds.4).
         # This rule makes applications slow.
-        target_compile_options(hikogui PUBLIC -wd26446)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26446)
 
         # C26447: The function is declared 'noexcept' but calls function '...' which may throw exceptions (f.6).
         # Since c++20 std::terminate will be called on throw.
-        target_compile_options(hikogui PUBLIC -wd26447)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26447)
 
         # C26481: Don't use pointer arithmetic. Use span instead (bounds.1).
         # False positive everywhere std::format() is used.
-        target_compile_options(hikogui PUBLIC -wd26481)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26481)
 
         # C26482: Only index into arrays using constant expressions (bounds.2).
         # This rule makes it so you can not use a variable to index into an array.
-        target_compile_options(hikogui PUBLIC -wd26482)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26482)
 
         # C26821: For '...', consider using gsl::span instead of std::span to guarantee runtime bounds safety (gsl.view).
         # This rule makes applications slow.
-        target_compile_options(hikogui PUBLIC -wd26821)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26821)
 
         # C28020: The expression '0<=_Param_(1)&&_Param_(1)<=256-1' is not true at this call.
         # False positives in base_n, where the index is static_cast<uint8_t>().
         # The bug (since 2020) in the compiler seem to have been triggered in unrelated code.
         # https://developercommunity.visualstudio.com/t/c28020-false-positives/923103
-        target_compile_options(hikogui PUBLIC -wd28020)
-
-        # C26465: Don't use const_cat to cast away const or volatile, const_cast is not required constness... (type.3)
-        # False positive on string literal,
-        # bug reported: https://developercommunity.visualstudio.com/t/C26465-false-positive-on-string-literal/10263615
-        target_compile_options(hikogui PUBLIC -wd26465)
+        target_compile_options(hikogui ${HI_SCOPE} -wd28020)
 
         # C26409: Avoid calling new and delete explicitly, use std::make_unique<T> instead (r.11)
         # Can't exclude unit-test and google-test uses new and delete in the TEST() macro.
-        target_compile_options(hikogui PUBLIC -wd26409)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26409)
 
         # C26426: Global initializer calls a non-constexpr function (i.22)
         # Can't exclude unit-test and google-test does this a lot.
-        target_compile_options(hikogui PUBLIC -wd26426)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26426)
 
         # C26455: Default constructor should not throw. Declare it 'noexcept' (f.6)
         # Can't exclude unit-test and google-test uses throwing default constructors in the TEST() macro.
-        target_compile_options(hikogui PUBLIC -wd26455)
-
-
+        target_compile_options(hikogui ${HI_SCOPE} -wd26455)
 
         # Turn off every warning fix one at a time:
-        #target_compile_options(hikogui PUBLIC -wd26472)
-        #target_compile_options(hikogui PUBLIC -wd26473)
-        #target_compile_options(hikogui PUBLIC -wd26474)
-        target_compile_options(hikogui PUBLIC -wd26475)
-        target_compile_options(hikogui PUBLIC -wd26476)
-        target_compile_options(hikogui PUBLIC -wd26478)
-        target_compile_options(hikogui PUBLIC -wd26485)
-        target_compile_options(hikogui PUBLIC -wd26490)
-        target_compile_options(hikogui PUBLIC -wd26491)
-        target_compile_options(hikogui PUBLIC -wd26492)
-        target_compile_options(hikogui PUBLIC -wd26493)
-        target_compile_options(hikogui PUBLIC -wd26494)
-        target_compile_options(hikogui PUBLIC -wd26495)
-        target_compile_options(hikogui PUBLIC -wd26496)
-        target_compile_options(hikogui PUBLIC -wd26497)
-        target_compile_options(hikogui PUBLIC -wd26498)
-        target_compile_options(hikogui PUBLIC -wd26800)
-        target_compile_options(hikogui PUBLIC -wd26813)
-        target_compile_options(hikogui PUBLIC -wd26814)
-        target_compile_options(hikogui PUBLIC -wd26817)
-        target_compile_options(hikogui PUBLIC -wd26818)
-        target_compile_options(hikogui PUBLIC -wd26820)
-        target_compile_options(hikogui PUBLIC -wd26830)
-        target_compile_options(hikogui PUBLIC -wd26432)
-        target_compile_options(hikogui PUBLIC -wd26451)
+        #target_compile_options(hikogui ${HI_SCOPE} -wd26472)
+        #target_compile_options(hikogui ${HI_SCOPE} -wd26473)
+        #target_compile_options(hikogui ${HI_SCOPE} -wd26474)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26475)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26476)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26478)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26485)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26490)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26491)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26492)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26493)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26494)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26495)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26496)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26497)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26498)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26800)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26813)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26814)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26817)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26818)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26820)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26830)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26432)
+        target_compile_options(hikogui ${HI_SCOPE} -wd26451)
 
     endif()
 endif()
 
 #-------------------------------------------------------------------
-# Copy resources needed by executables
+# Build Target: 
 #-------------------------------------------------------------------
-
-add_custom_target(hikogui_shaders)
-add_shader_target(hikogui_shaders
-    shaders/utils.glsl
-    shaders/pipeline_image.vert
-    shaders/pipeline_image.frag
-    shaders/pipeline_box.vert
-    shaders/pipeline_box.frag
-    shaders/pipeline_SDF.vert
-    shaders/pipeline_SDF.frag
-    shaders/pipeline_alpha.vert
-    shaders/pipeline_alpha.frag
-    shaders/pipeline_tone_mapper.vert
-    shaders/pipeline_tone_mapper.frag
-)
-
-set(hikogui_resource_files
-    resources/themes/hikogui_dark.theme.json
-    resources/themes/hikogui_light.theme.json
-    resources/fonts/elusiveicons-webfont.ttf
-    resources/fonts/hikogui_icons.ttf
-    resources/win32.keybinds.json
-)
-
-add_custom_target(hikogui_resources
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/resources ${CMAKE_CURRENT_BINARY_DIR}/resources
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_BINARY_DIR}/shaders ${CMAKE_CURRENT_BINARY_DIR}/resources/shaders
-    DEPENDS ${hikogui_resource_files} hikogui_shaders)
-
-add_dependencies(hikogui hikogui_resources)
+# A INTERFACE library does not have a build target which means it
+# can not be installed. Therefor we create a dummy target which
+# will make sure the INTERFACE library can be installed.
+add_custom_target(hikogui_dummy ALL)
+add_dependencies(hikogui_dummy hikogui)
 
 #-------------------------------------------------------------------
-# Installation Rules: hikogui                               (library)
-#-------------------------------------------------------------------
-
-include(GNUInstallDirs)
-
-install(TARGETS hikogui RESOURCE)
-
-# Copy all header files for the library.
-#install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/
-#        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-#        FILES_MATCHING PATTERN "*.hpp")
-#install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/
-#        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-#        FILES_MATCHING PATTERN "*.h")
-
-# Copy all resource files needing to be added to the resource directory of an application
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/resources/
-        DESTINATION share/hikogui/resources)
-
-# On Windows, the dynamic libs go in the same dir as the executable and static libs go into "lib".
-get_target_property(target_type hikogui TYPE)
-if(WIN32 AND target_type STREQUAL DYNAMIC_LIBRARY)
-    # Install the library and headers.
-    install(TARGETS hikogui EXPORT hikogui
-        FILE_SET hikogui_include_files DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_BINDIR} # <- .dll next to exe
-    )
-else()
-    # Install the library and headers.
-    install(TARGETS hikogui EXPORT hikogui
-        FILE_SET hikogui_include_files DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} # <- .lib
-    )
-endif()
-
-install(
-    EXPORT hikogui
-    DESTINATION share/hikogui
-    NAMESPACE hikogui::
-    FILE "hikoguiTargets.cmake"
-)
-
-include(CMakePackageConfigHelpers)
-
-configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/CMake/hikoguiConfig.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/hikoguiConfig.cmake"
-    INSTALL_DESTINATION lib/cmake/hikogui
-)
-write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/hikoguiConfigVersion.cmake"
-    COMPATIBILITY SameMajorVersion
-)
-install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/hikoguiConfig.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/hikoguiConfigVersion.cmake"
-    DESTINATION share/hikogui
-)
-#-------------------------------------------------------------------
-# Build Target: hikogui_tests                            (executable)
+# Build Target: hikogui_tests
 #-------------------------------------------------------------------
 
 if(BUILD_TESTING)
@@ -505,69 +460,67 @@ endif()
 #-------------------------------------------------------------------
 # Build examples
 #-------------------------------------------------------------------
-add_custom_target(examples)
-add_subdirectory(examples/codec)
-add_subdirectory(examples/custom_widgets)
-add_subdirectory(examples/hikogui_demo)
-add_subdirectory(examples/vulkan/triangle)
-add_subdirectory(examples/widgets)
+if(BUILD_EXAMPLES)
+    add_custom_target(examples)
+    add_subdirectory(examples/codec)
+    add_subdirectory(examples/custom_widgets)
+    add_subdirectory(examples/hikogui_demo)
+    add_subdirectory(examples/vulkan/triangle)
+    add_subdirectory(examples/widgets)
+endif()
 
 #-------------------------------------------------------------------
 # Display Compiler and Linker properties of Build Targets
 #-------------------------------------------------------------------
 
 show_build_target_properties(hikogui)
+
+feature_summary(WHAT PACKAGES_FOUND PACKAGES_NOT_FOUND ENABLED_FEATURES DISABLED_FEATURES)
+
+
 #-------------------------------------------------------------------
-# Build Documentation
+# Installation Rules: hikogui                               (library)
 #-------------------------------------------------------------------
+set(INSTALL_RESOURCEDIR "${CMAKE_INSTALL_DATADIR}/hikogui/resources")
+set(INSTALL_CMAKEDIR "${CMAKE_INSTALL_DATADIR}/hikogui/CMake")
+set(INSTALL_MODULEDIR "module")
 
-#
-# Doxygen
-#
-find_package(Doxygen)
+install(TARGETS hikogui EXPORT hikogui
+    FILE_SET hikogui_include_files
+    FILE_SET hikogui_generated_include_files
+    FILE_SET CXX_MODULES DESTINATION "${INSTALL_MODULEDIR}"
+    RUNTIME
+    ARCHIVE
+    LIBRARY
+    RESOURCE DESTINATION "${INSTALL_RESOURCEDIR}"
+)
 
-if(DOXYGEN_FOUND)
-    set(DOXYGEN_EXCLUDE_PATTERNS *_tests.cpp *_impl.cpp *.mm)
-    set(DOXYGEN_GENERATE_HTML YES)
-    set(DOXYGEN_GENERATE_LATEX NO)
-    set(DOXYGEN_QUIET YES)
-    set(DOXYGEN_WARN_IF_UNDOCUMENTED NO)
-    set(DOXYGEN_WARN_NO_PARAMDOC NO)
-    set(DOXYGEN_STRIP_FROM_PATH src)
-    set(DOXYGEN_STRIP_FROM_INC_PATH src)
+install(
+    EXPORT hikogui
+    DESTINATION "${INSTALL_CMAKEDIR}"
+    NAMESPACE hikogui::
+    FILE "hikoguiTargets.cmake"
+)
 
-    # Use SHORT_NAMES to prevent Doxygen from generating filenames with double-quotes.
-    # ALLOW_UNICODE_NAMES does not escape double-quotes.
-    set(DOXYGEN_SHORT_NAMES YES)
+get_target_resources(hikogui RESOURCE_FILES)
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/CMake/packaging/hikoguiResources.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/hikoguiResources.cmake"
+    @ONLY
+)
 
-    set(DOXYGEN_JAVADOC_AUTOBRIEF YES)
-    set(DOXYGEN_ALWAYS_DETAILED_SEC YES)
-    set(DOXYGEN_DISTRIBUTE_GROUP_DOC YES)
-
-    set(DOXYGEN_OPTIMIZE_OUTPUT_FOR_C YES)
-    set(DOXYGEN_BUILTIN_STL_SUPPORT YES)
-    #set(DOXYGEN_CLANG_ASSISTED_PARSING YES)
-    #set(DOXYGEN_CLANG_OPTIONS "-std=c++20")
-
-    set(DOXYGEN_TAGFILES "${CMAKE_SOURCE_DIR}/docs/media/style/cppreference-doxygen-web.tag.xml=http://en.cppreference.com/w/")
-    set(DOXYGEN_IMAGE_PATH "${CMAKE_SOURCE_DIR}/src/" "${CMAKE_SOURCE_DIR}/docs/")
-    set(DOXYGEN_EXAMPLE_PATH "${CMAKE_SOURCE_DIR}/examples/")
-
-    set(DOXYGEN_LAYOUT_FILE "${CMAKE_SOURCE_DIR}/docs/media/style/DoxygenLayout.xml")
-    set(DOXYGEN_HTML_COLORSTYLE_HUE 24)
-    set(DOXYGEN_HTML_COLORSTYLE_SAT 150)
-    set(DOXYGEN_HTML_COLORSTYLE_GAMMA 80)
-    set(DOXYGEN_HTML_EXTRA_STYLESHEET "${CMAKE_SOURCE_DIR}/docs/media/style/customdoxygen.css")
-
-
-    # The following 4 settings are to get protected members to behave as private.
-    set(DOXYGEN_ENABLE_PREPROCESSING YES)
-    set(DOXYGEN_MACRO_EXPANSION YES)
-    set(DOXYGEN_EXPAND_ONLY_PREDEF YES)
-    set(DOXYGEN_PREDEFINED "protected=private")
-
-    doxygen_add_docs(docs src/hikogui docs)
-    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION share COMPONENT docs EXCLUDE_FROM_ALL)
-else()
-    message("Please install Doxygen to generate the documentation.")
-endif()
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/CMake/packaging/hikoguiConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/hikoguiConfig.cmake"
+    INSTALL_DESTINATION "${INSTALL_CMAKEDIR}"
+)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/hikoguiConfigVersion.cmake"
+    COMPATIBILITY SameMajorVersion
+)
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/hikoguiConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/hikoguiConfigVersion.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/hikoguiResources.cmake"
+    DESTINATION "${INSTALL_CMAKEDIR}"
+)

@@ -8,14 +8,22 @@
 
 #pragma once
 
-#include "../i18n/translate.hpp"
-#include "../unicode/gstring.hpp"
-#include "../label.hpp"
+#include "../observer/observer.hpp"
+#include "../utility/utility.hpp"
+#include "../concurrency/concurrency.hpp"
+#include "../dispatch/dispatch.hpp"
+#include "../GUI/GUI.hpp"
+#include "../macros.hpp"
+#include "../unicode/unicode.hpp"
+#include "../l10n/l10n.hpp"
+#include "../macros.hpp"
 #include <string>
 #include <memory>
 #include <functional>
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.widgets.text_delegate);
+
+hi_export namespace hi { inline namespace v1 {
 class text_widget;
 
 /** A delegate that controls the state of a text_widget.
@@ -24,33 +32,29 @@ class text_widget;
  */
 class text_delegate {
 public:
-    using notifier_type = notifier<>;
-    using callback_token = notifier_type::callback_token;
-    using callback_proto = notifier_type::callback_proto;
-
     virtual ~text_delegate() = default;
 
-    virtual void init(text_widget& sender) noexcept {}
-    virtual void deinit(text_widget& sender) noexcept {}
+    virtual void init(widget_intf const& sender) noexcept {}
+    virtual void deinit(widget_intf const& sender) noexcept {}
 
     /** Read text as a string of graphemes.
      */
-    [[nodiscard]] virtual gstring read(text_widget& sender) noexcept = 0;
+    [[nodiscard]] virtual gstring read(widget_intf const& sender) noexcept = 0;
 
     /** Write text from a string of graphemes.
      */
-    virtual void write(text_widget& sender, gstring const& text) noexcept = 0;
+    virtual void write(widget_intf const& sender, gstring const& text) noexcept = 0;
 
     /** Subscribe a callback for notifying the widget of a data change.
      */
-    [[nodiscard]] callback_token
-    subscribe(forward_of<callback_proto> auto&& callback, callback_flags flags = callback_flags::synchronous) noexcept
+    template<forward_of<void()> Func>
+    [[nodiscard]] callback<void()> subscribe(Func&& func, callback_flags flags = callback_flags::synchronous) noexcept
     {
-        return _notifier.subscribe(hi_forward(callback), flags);
+        return _notifier.subscribe(std::forward<Func>(func), flags);
     }
 
 protected:
-    notifier_type _notifier;
+    notifier<void()> _notifier;
 };
 
 /** A default text delegate.
@@ -83,18 +87,18 @@ public:
         });
     }
 
-    [[nodiscard]] gstring read(text_widget& sender) noexcept override
+    [[nodiscard]] gstring read(widget_intf const& sender) noexcept override
     {
         return to_gstring(std::string{*value});
     }
 
-    void write(text_widget& sender, gstring const& text) noexcept override
+    void write(widget_intf const& sender, gstring const& text) noexcept override
     {
         hi_no_default();
     }
 
 private:
-    typename decltype(value)::callback_token _value_cbt;
+    callback<void(value_type)> _value_cbt;
 };
 
 /** A default text delegate specialization for `std::string`.
@@ -119,18 +123,18 @@ public:
         });
     }
 
-    [[nodiscard]] gstring read(text_widget& sender) noexcept override
+    [[nodiscard]] gstring read(widget_intf const& sender) noexcept override
     {
         return to_gstring(*value);
     }
 
-    void write(text_widget& sender, gstring const& text) noexcept override
+    void write(widget_intf const& sender, gstring const& text) noexcept override
     {
         *value.copy() = to_string(text);
     }
 
 private:
-    typename decltype(value)::callback_token _value_cbt;
+    callback<void(value_type)> _value_cbt;
 };
 
 /** A default text delegate specialization for `gstring`.
@@ -155,18 +159,18 @@ public:
         });
     }
 
-    [[nodiscard]] gstring read(text_widget& sender) noexcept override
+    [[nodiscard]] gstring read(widget_intf const& sender) noexcept override
     {
         return *value;
     }
 
-    void write(text_widget& sender, gstring const& text) noexcept override
+    void write(widget_intf const& sender, gstring const& text) noexcept override
     {
         *value.copy() = text;
     }
 
 private:
-    typename decltype(value)::callback_token _value_cbt;
+    callback<void(value_type)> _value_cbt;
 };
 
 /** A default text delegate specialization for `translate`.
@@ -174,9 +178,9 @@ private:
  * @ingroup widget_delegates
  */
 template<>
-class default_text_delegate<translate> : public text_delegate {
+class default_text_delegate<txt> : public text_delegate {
 public:
-    using value_type = translate;
+    using value_type = txt;
 
     observer<value_type> value;
 
@@ -191,63 +195,18 @@ public:
         });
     }
 
-    [[nodiscard]] gstring read(text_widget& sender) noexcept override
+    [[nodiscard]] gstring read(widget_intf const& sender) noexcept override
     {
-        return to_gstring(value.read()());
+        return value.read()->translate();
     }
 
-    void write(text_widget& sender, gstring const& text) noexcept override
+    void write(widget_intf const& sender, gstring const& text) noexcept override
     {
         hi_no_default();
     }
 
 private:
-    typename decltype(value)::callback_token _value_cbt;
-};
-
-/** A default text delegate specialization for `text`.
- *
- * @ingroup widget_delegates
- */
-template<>
-class default_text_delegate<text> : public text_delegate {
-public:
-    using value_type = text;
-
-    observer<value_type> value;
-
-    /** Construct a delegate.
-     *
-     * @param value A value or observer-value used as a representation of the state.
-     */
-    explicit default_text_delegate(forward_of<observer<value_type>> auto&& value) noexcept : value(hi_forward(value))
-    {
-        _value_cbt = this->value.subscribe([&](auto...) {
-            this->_notifier();
-        });
-    }
-
-    [[nodiscard]] gstring read(text_widget& sender) noexcept override
-    {
-        return to_gstring(*value.read());
-    }
-
-    void write(text_widget& sender, gstring const& text) noexcept override
-    {
-        auto proxy = value.copy();
-        auto *ptr = std::addressof(*proxy);
-
-        if (auto *string_ptr = get_if<std::string>(ptr)) {
-            *string_ptr = to_string(text);
-        } else if (auto *gstring_ptr = get_if<gstring>(ptr)) {
-            *gstring_ptr = text;
-        } else {
-            hi_not_implemented();
-        }
-    }
-
-private:
-    typename decltype(value)::callback_token _value_cbt;
+    callback<void(value_type)> _value_cbt;
 };
 
 /** Create a shared pointer to a default text delegate.
@@ -257,10 +216,8 @@ private:
  * @param value The observer value which represents the displayed text.
  * @return shared pointer to a text delegate
  */
-std::shared_ptr<text_delegate> make_default_text_delegate(auto&& value) noexcept requires requires
-{
-    default_text_delegate<observer_decay_t<decltype(value)>>{hi_forward(value)};
-}
+std::shared_ptr<text_delegate> make_default_text_delegate(auto&& value) noexcept
+    requires requires { default_text_delegate<observer_decay_t<decltype(value)>>{hi_forward(value)}; }
 {
     return std::make_shared<default_text_delegate<observer_decay_t<decltype(value)>>>(hi_forward(value));
 }

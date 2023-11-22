@@ -2,12 +2,8 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
-#include "hikogui/module.hpp"
-#include "hikogui/GUI/gui_system.hpp"
-#include "hikogui/widgets/widget.hpp"
+#include "hikogui/hikogui.hpp"
 #include "hikogui/crt.hpp"
-#include "hikogui/log.hpp"
-#include "hikogui/loop.hpp"
 
 // Every widget must inherit from hi::widget.
 class command_widget : public hi::widget {
@@ -16,8 +12,8 @@ public:
     hi::observer<bool> value;
 
     // Every constructor of a widget starts with a `window` and `parent` argument.
-    // In most cases these are automatically filled in when calling a container widget's `make_widget()` function.
-    command_widget(hi::widget *parent) noexcept : hi::widget(parent)
+    // In most cases these are automatically filled in when calling a container widget's `emplace()` function.
+    command_widget(hi::not_null<widget_intf const *> parent) noexcept : hi::widget(parent)
     {
         // To visually show the change in value the widget needs to be redrawn.
         _value_cbt = value.subscribe([&](auto...) {
@@ -83,7 +79,7 @@ public:
     }
 
     // Override this function when your widget needs to be controllable by mouse interaction.
-    [[nodiscard]] hi::hitbox hitbox_test(hi::point2i position) const noexcept override
+    [[nodiscard]] hi::hitbox hitbox_test(hi::point2 position) const noexcept override
     {
         // Check if the (mouse) position is within the visual-area of the widget.
         // The hit_rectangle is the _layout.rectangle() intersected with the _layout.clipping_rectangle.
@@ -112,7 +108,7 @@ public:
             break;
 
         case hi::gui_event_type::keyboard_grapheme:
-            hi_log_error("User typed the letter U+{:x}.", static_cast<uint32_t>(get<0>(event.grapheme())));
+            hi_log_error("User typed the letter U+{:x}.", static_cast<uint32_t>(event.grapheme().starter()));
             return true;
 
         case hi::gui_event_type::mouse_up:
@@ -129,15 +125,20 @@ public:
     }
 
 private:
-    decltype(value)::callback_token _value_cbt;
+    hi::callback<void(bool)> _value_cbt;
 };
 
 int hi_main(int argc, char *argv[])
 {
-    auto gui = hi::gui_system::make_unique();
-    auto window = gui->make_window(hi::tr("Custom Widget Command"));
-    window->content().make_widget<command_widget>("A1");
-    window->content().make_widget<command_widget>("A2");
+    hi::set_application_name("Custom widget command example");
+    hi::set_application_vendor("HikoGUI");
+    hi::set_application_version({1, 0, 0});
+
+    auto widget = std::make_unique<hi::window_widget>(hi::txt("Custom Widget Command"));
+    widget->content().emplace<command_widget>("A1");
+    widget->content().emplace<command_widget>("A2");
+
+    auto window = std::make_unique<hi::gui_window>(std::move(widget));
 
     auto close_cbt = window->closing.subscribe(
         [&] {

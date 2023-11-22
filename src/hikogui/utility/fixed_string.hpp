@@ -4,16 +4,22 @@
 
 #pragma once
 
-#include "utility.hpp"
-#include "cast.hpp"
+#include "../macros.hpp"
 #include "assert.hpp"
+#include "cast.hpp"
+#include "terminate.hpp"
+#include "exception.hpp"
+#include "misc.hpp"
 #include <string>
 #include <string_view>
 #include <format>
 #include <array>
 #include <ranges>
+#include <compare>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.utility.fixed_string);
+
+hi_export namespace hi { inline namespace v1 {
 
 /** A string which may be used as a none-type template parameter.
  *
@@ -32,7 +38,7 @@ namespace hi::inline v1 {
  *     }
  *     ```
  */
-template<int N>
+hi_export template<size_t N>
 struct fixed_string {
     using value_type = char;
 
@@ -79,6 +85,11 @@ struct fixed_string {
     [[nodiscard]] constexpr std::size_t size() const noexcept
     {
         return N;
+    }
+
+    [[nodiscard]] constexpr bool empty() const noexcept
+    {
+        return N == 0;
     }
 
     template<size_t I>
@@ -182,23 +193,63 @@ struct fixed_string {
         return *this <=> fixed_string<O - 1>(rhs);
     }
 
-    template<size_t O>
-    [[nodiscard]] constexpr auto operator+(fixed_string<O> const& rhs) const noexcept
+    /** Append two strings.
+     */
+    template<size_t R>
+    [[nodiscard]] constexpr auto operator+(fixed_string<R> const& rhs) const noexcept
     {
-        auto r = fixed_string<N + O>{};
+        auto r = fixed_string<N + R>{};
         auto dst_i = 0_uz;
         for (auto src_i = 0_uz; src_i != N; ++src_i, ++dst_i) {
             r[dst_i] = (*this)[src_i];
         }
-        for (auto src_i = 0_uz; src_i != O; ++src_i, ++dst_i) {
+        for (auto src_i = 0_uz; src_i != R; ++src_i, ++dst_i) {
             r[dst_i] = rhs[src_i];
         }
 
         return r;
     }
+
+    template<size_t R>
+    [[nodiscard]] constexpr auto operator+(char const (&rhs)[R]) const noexcept
+    {
+        return *this + fixed_string<R - 1>(rhs);
+    }
+
+    /** Join two strings with a slash '/'.
+     *
+     * If one or both of the operands is empty, no '/' is added.
+     */
+    template<size_t R>
+    [[nodiscard]] constexpr auto operator/(fixed_string<R> const& rhs) const noexcept
+    {
+        constexpr auto has_dot = N != 0 and R != 0 ? 1_uz : 0_uz;
+        auto r = fixed_string<N + R + has_dot>{};
+
+        auto dst_i = 0_uz;
+        for (auto src_i = 0_uz; src_i != N; ++src_i, ++dst_i) {
+            r[dst_i] = (*this)[src_i];
+        }
+
+        if (has_dot) {
+            r[dst_i++] = '/';
+        }
+
+        for (auto src_i = 0_uz; src_i != R; ++src_i, ++dst_i) {
+            r[dst_i] = rhs[src_i];
+        }
+
+        return r;
+    }
+
+    template<size_t R>
+    [[nodiscard]] constexpr auto operator/(char const (&rhs)[R]) const noexcept
+    {
+        return *this / fixed_string<R - 1>(rhs);
+    }
 };
 
-template<fixed_string Tag>
+hi_export template<fixed_string Tag>
 [[nodiscard]] consteval uint32_t fourcc() noexcept
 {
     static_assert(Tag.size() == 4, "fourcc must get a 4 character fixed_string");
@@ -207,32 +258,31 @@ template<fixed_string Tag>
         (static_cast<uint32_t>(get<2>(Tag)) << 8) | static_cast<uint32_t>(get<3>(Tag));
 }
 
-template<fixed_string Tag>
+hi_export template<fixed_string Tag>
 consteval uint32_t operator"" _fcc()
 {
     return fourcc<Tag>();
 }
 
-template<std::size_t N>
+hi_export template<std::size_t N>
 fixed_string(char const (&str)[N]) -> fixed_string<N - 1>;
 
-template<std::invocable F>
-fixed_string(F const& f) -> fixed_string<std::ranges::size(F{}())>;
+hi_export template<std::invocable F>
+fixed_string(F const& f) -> fixed_string<F{}().size()>;
 
-#define hi_to_fixed_string(x) \
-    ::hi::fixed_string \
-    { \
-        [] { \
-            return x; \
-        } \
-    }
+// clang-format off
+#define hi_to_fixed_string(x) ::hi::fixed_string{[]{ return x; }}
+// clang-format on
 
-} // namespace hi::inline v1
+}} // namespace hi::v1
 
-template<std::size_t N, typename CharT>
-struct std::formatter<hi::fixed_string<N>, CharT> : std::formatter<std::string_view, CharT> {
-    constexpr auto format(hi::fixed_string<N> const& t, auto& fc)
+// XXX #617 MSVC bug does not handle partial specialization in modules, outside a namespace.
+namespace std {
+hi_export template<std::size_t N>
+struct formatter<hi::fixed_string<N>, char> : formatter<std::string_view, char> {
+    constexpr auto format(hi::fixed_string<N> const& t, auto& fc) const
     {
-        return std::formatter<std::string_view, CharT>::format(static_cast<std::string_view>(t), fc);
+        return std::formatter<std::string_view, char>::format(static_cast<std::string_view>(t), fc);
     }
 };
+}

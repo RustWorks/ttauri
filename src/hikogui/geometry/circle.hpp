@@ -7,11 +7,16 @@
 
 #pragma once
 
-#include "point.hpp"
-#include "axis_aligned_rectangle.hpp"
+#include "point2.hpp"
+#include "aarectangle.hpp"
 #include "quad.hpp"
+#include "../macros.hpp"
+#include <exception>
+#include <compare>
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.geometry : circle);
+
+hi_export namespace hi { inline namespace v1 {
 
 /** A type defining a 2D circle.
  */

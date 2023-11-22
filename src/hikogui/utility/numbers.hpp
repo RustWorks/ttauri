@@ -9,10 +9,14 @@
 
 #pragma once
 
+#include "../macros.hpp"
 #include "concepts.hpp"
 #include <concepts>
+#include <limits>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.utility.numbers);
+
+hi_export namespace hi::inline v1 {
 
 /** A large number.
 * 

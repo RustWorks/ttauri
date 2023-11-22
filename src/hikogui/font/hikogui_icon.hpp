@@ -4,9 +4,13 @@
 
 #pragma once
 
-namespace hi::inline v1 {
+#include "../macros.hpp"
 
-enum class hikogui_icon : char32_t {
+hi_export_module(hikogui.font.hikogui_icon);
+
+hi_export namespace hi::inline v1 {
+
+hi_export enum class hikogui_icon : char32_t {
     MinimizeWindow = 0xf301,
     MaximizeWindowMS = 0xf302,
     RestoreWindowMS = 0xf303,

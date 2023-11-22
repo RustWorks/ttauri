@@ -2,18 +2,15 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
-#include "hikogui/module.hpp"
-#include "hikogui/GUI/gui_system.hpp"
-#include "hikogui/widgets/widget.hpp"
+#include "hikogui/hikogui.hpp"
 #include "hikogui/crt.hpp"
-#include "hikogui/loop.hpp"
 
 // Every widget must inherit from hi::widget.
 class minimum_widget : public hi::widget {
 public:
     // Every constructor of a widget starts with a `window` and `parent` argument.
-    // In most cases these are automatically filled in when calling a container widget's `make_widget()` function.
-    minimum_widget(hi::widget *parent) noexcept : widget(parent) {}
+    // In most cases these are automatically filled in when calling a container widget's `emplace()` function.
+    minimum_widget(hi::not_null<widget_intf const *> parent) noexcept : widget(parent) {}
 
     // The set_constraints() function is called when the window is first initialized,
     // or when a widget wants to change its constraints.
@@ -73,9 +70,14 @@ private:
 
 int hi_main(int argc, char *argv[])
 {
-    auto gui = hi::gui_system::make_unique();
-    auto window = gui->make_window(hi::tr("Minimum Custom Widget"));
-    window->content().make_widget<minimum_widget>("A1");
+    hi::set_application_name("Minimum custom widget example");
+    hi::set_application_vendor("HikoGUI");
+    hi::set_application_version({1, 0, 0});
+
+    auto widget = std::make_unique<hi::window_widget>(hi::txt("Minimum Custom Widget"));
+    widget->content().emplace<minimum_widget>("A1");
+
+    auto window = std::make_unique<hi::gui_window>(std::move(widget));
 
     auto close_cbt = window->closing.subscribe(
         [&] {

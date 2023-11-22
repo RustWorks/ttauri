@@ -9,16 +9,19 @@
 #pragma once
 
 #include "widget.hpp"
-#include "../GFX/paged_image.hpp"
-#include "../geometry/module.hpp"
-#include "../label.hpp"
+#include "../GFX/GFX.hpp"
+#include "../geometry/geometry.hpp"
+#include "../l10n/l10n.hpp"
+#include "../macros.hpp"
 #include <memory>
 #include <string>
 #include <array>
 #include <optional>
 #include <future>
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.widgets.icon_widget);
+
+hi_export namespace hi { inline namespace v1 {
 
 template<typename Context>
 concept icon_widget_attribute = forward_of<Context, observer<hi::icon>, observer<hi::alignment>, observer<hi::color>>;
@@ -45,7 +48,7 @@ public:
      */
     observer<alignment> alignment = hi::alignment::middle_center();
 
-    icon_widget(widget *parent, icon_widget_attribute auto&&...attributes) noexcept :
+    icon_widget(not_null<widget_intf const *> parent, icon_widget_attribute auto&&...attributes) noexcept :
         icon_widget(parent)
     {
         set_attributes(hi_forward(attributes)...);
@@ -67,23 +70,119 @@ public:
     }
 
     /// @privatesection
-    [[nodiscard]] box_constraints update_constraints() noexcept override;
-    void set_layout(widget_layout const& context) noexcept override;
-    void draw(draw_context const& context) noexcept override;
+    [[nodiscard]] box_constraints update_constraints() noexcept override
+    {
+        _layout = {};
+
+        if (_icon_has_modified.exchange(false)) {
+            _icon_type = icon_type::no;
+            _icon_size = {};
+            _glyph = {};
+            _pixmap_backing = {};
+
+            if (hilet pixmap = std::get_if<hi::pixmap<sfloat_rgba16>>(&icon.read())) {
+                _icon_type = icon_type::pixmap;
+                _icon_size = extent2{narrow_cast<float>(pixmap->width()), narrow_cast<float>(pixmap->height())};
+
+                if (not(_pixmap_backing = gfx_pipeline_image::paged_image{surface(), *pixmap})) {
+                    // Could not get an image, retry.
+                    _icon_has_modified = true;
+                    ++global_counter<"icon_widget:no-backing-image:constrain">;
+                    process_event({gui_event_type::window_reconstrain});
+                }
+
+            } else if (hilet g1 = std::get_if<font_book::font_glyph_type>(&icon.read())) {
+                _glyph = *g1;
+                _icon_type = icon_type::glyph;
+                _icon_size =
+                    _glyph.get_metrics().bounding_rectangle.size() * theme().text_style(semantic_text_style::label)->size * theme().scale;
+
+            } else if (hilet g2 = std::get_if<elusive_icon>(&icon.read())) {
+                _glyph = find_glyph(*g2);
+                _icon_type = icon_type::glyph;
+                _icon_size =
+                    _glyph.get_metrics().bounding_rectangle.size() * theme().text_style(semantic_text_style::label)->size * theme().scale;
+
+            } else if (hilet g3 = std::get_if<hikogui_icon>(&icon.read())) {
+                _glyph = find_glyph(*g3);
+                _icon_type = icon_type::glyph;
+                _icon_size =
+                    _glyph.get_metrics().bounding_rectangle.size() * theme().text_style(semantic_text_style::label)->size * theme().scale;
+            }
+        }
+
+        hilet resolved_alignment = resolve(*alignment, os_settings::left_to_right());
+        hilet icon_constraints = box_constraints{
+            extent2{0, 0},
+            narrow_cast<extent2>(_icon_size),
+            narrow_cast<extent2>(_icon_size),
+            resolved_alignment,
+            theme().margin<float>()};
+        return icon_constraints.constrain(*minimum, *maximum);
+    }
+    void set_layout(widget_layout const& context) noexcept override
+    {
+        if (compare_store(_layout, context)) {
+            if (_icon_type == icon_type::no or not _icon_size) {
+                _icon_rectangle = {};
+            } else {
+                hilet width = std::clamp(context.shape.width(), minimum->width(), maximum->width());
+                hilet height = std::clamp(context.shape.height(), minimum->height(), maximum->height());
+
+                hilet icon_scale = scale2::uniform(_icon_size, extent2{narrow_cast<float>(width), narrow_cast<float>(height)});
+                hilet new_icon_size = narrow_cast<extent2>(icon_scale * _icon_size);
+                hilet resolved_alignment = resolve(*alignment, os_settings::left_to_right());
+                _icon_rectangle = align(context.rectangle(), new_icon_size, resolved_alignment);
+            }
+        }
+    }
+    void draw(draw_context const& context) noexcept override
+    {
+        if (*mode > widget_mode::invisible and overlaps(context, layout())) {
+            switch (_icon_type) {
+            case icon_type::no:
+                break;
+
+            case icon_type::pixmap:
+                if (not context.draw_image(layout(), _icon_rectangle, _pixmap_backing)) {
+                    // Continue redrawing until the image is loaded.
+                    request_redraw();
+                }
+                break;
+
+            case icon_type::glyph:
+                {
+                    context.draw_glyph(layout(), _icon_rectangle, _glyph, theme().color(*color));
+                }
+                break;
+
+            default:
+                hi_no_default();
+            }
+        }
+    }
     /// @endprivatesection
 private:
     enum class icon_type { no, glyph, pixmap };
 
     icon_type _icon_type;
-    glyph_ids _glyph;
-    paged_image _pixmap_backing;
-    decltype(icon)::callback_token _icon_cbt;
+    font_book::font_glyph_type _glyph;
+    gfx_pipeline_image::paged_image _pixmap_backing;
     std::atomic<bool> _icon_has_modified = true;
 
     extent2 _icon_size;
-    aarectanglei _icon_rectangle;
+    aarectangle _icon_rectangle;
 
-    icon_widget(widget *parent) noexcept;
+    callback<void(hi::icon)> _icon_cbt;
+
+    icon_widget(not_null<widget_intf const *> parent) noexcept : super(parent)
+    {
+        _icon_cbt = icon.subscribe([this](auto...) {
+            _icon_has_modified = true;
+            ++global_counter<"icon_widget:icon:constrain">;
+            process_event({gui_event_type::window_reconstrain});
+        });
+    }
 };
 
 }} // namespace hi::v1

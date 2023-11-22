@@ -8,9 +8,16 @@
 
 #pragma once
 
-#include "point.hpp"
+#include "point3.hpp"
+#include "vector3.hpp"
+#include "../macros.hpp"
+#include <cstddef>
+#include <exception>
+#include <compare>
 
-namespace hi {
+hi_export_module(hikogui.geometry : line_segment);
+
+hi_export namespace hi {
 inline namespace v1 {
 
 /** Line segment.
@@ -37,7 +44,7 @@ public:
         return _v;
     }
 
-    [[nodiscard]] constexpr friend float hypot(line_segment const &rhs) noexcept
+    [[nodiscard]] friend float hypot(line_segment const &rhs) noexcept
     {
         return hypot(rhs._v);
     }

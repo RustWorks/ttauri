@@ -11,10 +11,15 @@
 #include "widget.hpp"
 #include "scroll_bar_widget.hpp"
 #include "scroll_aperture_widget.hpp"
-#include "../geometry/module.hpp"
-#include "../layout/grid_layout.hpp"
+#include "../geometry/geometry.hpp"
+#include "../layout/layout.hpp"
+#include "../coroutine/coroutine.hpp"
+#include "../macros.hpp"
+#include <coroutine>
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.widgets.scroll_widget);
+
+hi_export namespace hi { inline namespace v1 {
 
 /** The scroll widget allows a content widget to be shown in less space than is
  * required.
@@ -49,7 +54,7 @@ public:
     using horizontal_scroll_bar_type = scroll_bar_widget<axis::horizontal>;
     using vertical_scroll_bar_type = scroll_bar_widget<axis::vertical>;
 
-    static constexpr hi::axis axis = Axis;
+    constexpr static hi::axis axis = Axis;
 
     ~scroll_widget() {}
 
@@ -57,13 +62,9 @@ public:
      *
      * @param parent The parent widget.
      */
-    scroll_widget(widget *parent) noexcept : super(parent)
+    scroll_widget(not_null<widget_intf const *> parent) noexcept : super(parent)
     {
         hi_axiom(loop::main().on_thread());
-        hi_assert_not_null(parent);
-
-        // The scroll-widget will not draw itself, only its selected content.
-        semantic_layer = parent->semantic_layer;
 
         auto aperture = std::make_unique<scroll_aperture_widget>(this);
         auto horizontal_scroll_bar = std::make_unique<horizontal_scroll_bar_type>(
@@ -102,13 +103,13 @@ public:
      * @return A reference to the widget that was created.
      */
     template<typename Widget, typename... Args>
-    Widget& make_widget(Args&&...args) noexcept
+    Widget& emplace(Args&&...args) noexcept
     {
-        return _aperture->make_widget<Widget>(std::forward<Args>(args)...);
+        return _aperture->emplace<Widget>(std::forward<Args>(args)...);
     }
 
     /// @privatesection
-    [[nodiscard]] generator<widget const &> children(bool include_invisible) const noexcept override
+    [[nodiscard]] generator<widget_intf &> children(bool include_invisible) noexcept override
     {
         co_yield *_aperture;
         co_yield *_vertical_scroll_bar;
@@ -140,14 +141,14 @@ public:
                 // The grid cells are always ordered in row-major.
                 // This the vertical scroll bar is _grid[1] and the horizontal scroll bar is _grid[2].
                 if (not _vertical_scroll_bar->visible()) {
-                    shape.rectangle = aarectanglei{0, shape.y(), _layout.width(), shape.height()};
+                    shape.rectangle = aarectangle{0, shape.y(), _layout.width(), shape.height()};
                 }
                 if (not _horizontal_scroll_bar->visible()) {
-                    shape.rectangle = aarectanglei{shape.x(), 0, shape.width(), _layout.height()};
+                    shape.rectangle = aarectangle{shape.x(), 0, shape.width(), _layout.height()};
                 }
             }
 
-            cell.value->set_layout(context.transform(shape, 0.0f));
+            cell.value->set_layout(context.transform(shape, transform_command::level));
         }
     }
 
@@ -160,7 +161,7 @@ public:
         }
     }
 
-    [[nodiscard]] hitbox hitbox_test(point2i position) const noexcept override
+    [[nodiscard]] hitbox hitbox_test(point2 position) const noexcept override
     {
         hi_axiom(loop::main().on_thread());
 

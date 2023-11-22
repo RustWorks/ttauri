@@ -9,8 +9,11 @@
 #pragma once
 
 #include "widget.hpp"
+#include "../macros.hpp"
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.widgets.spacer_widget);
+
+hi_export namespace hi { inline namespace v1 {
 
 /** This GUI widget is used as a spacer between other widget for layout purposes.
  * @ingroup widgets
@@ -20,9 +23,9 @@ class spacer_widget final : public widget {
 public:
     using super = widget;
 
-    spacer_widget(widget *parent) noexcept : super(parent) {}
+    spacer_widget(not_null<widget_intf const *> parent) noexcept : super(parent) {}
 
-    [[nodiscard]] generator<widget const &> children(bool include_invisible) const noexcept override
+    [[nodiscard]] generator<widget_intf &> children(bool include_invisible) noexcept override
     {
         co_return;
     }
@@ -32,7 +35,7 @@ public:
         _layout = {};
 
         auto r = box_constraints{};
-        r.maximum = extent2i::large();
+        r.maximum = extent2::large();
         return r;
     }
 
@@ -43,7 +46,7 @@ public:
 
     void draw(draw_context const& context) noexcept override {}
 
-    [[nodiscard]] hitbox hitbox_test(point2i position) const noexcept override
+    [[nodiscard]] hitbox hitbox_test(point2 position) const noexcept override
     {
         return hitbox{};
     }

@@ -5,13 +5,16 @@
 #pragma once
 
 #include "otype_utilities.hpp"
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <span>
 #include <cstddef>
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.font.otype_htmx);
 
-[[nodiscard]] inline auto
+hi_export namespace hi { inline namespace v1 {
+
+[[nodiscard]] hi_inline auto
 otype_hmtx_get(std::span<std::byte const> bytes, hi::glyph_id glyph_id, uint16_t num_horizontal_metrics, float em_scale)
 {
     struct entry_type {

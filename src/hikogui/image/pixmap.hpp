@@ -8,10 +8,13 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <cstddef>
 #include <memory>
 #include <span>
+
+hi_export_module(hikogui.image.pixmap);
 
 hi_warning_push();
 // C26439: This kind of function should not throw. Declare it 'noexcept' (f.6)
@@ -21,7 +24,7 @@ hi_warning_ignore_msvc(26439);
 // Writing iterators instead of using raw pointers will require a lot of code without any added safety.
 hi_warning_ignore_msvc(26459);
 
-namespace hi { inline namespace v1 {
+hi_export namespace hi { inline namespace v1 {
 template<typename T>
 class pixmap_span;
 
@@ -525,8 +528,11 @@ private:
     [[no_unique_address]] allocator_type _allocator = {};
 };
 
-template<typename T, typename Allocator = std::allocator<std::remove_const_t<T>>>
-pixmap(pixmap_span<T> const& other, Allocator allocator = std::allocator{}) -> pixmap<std::remove_const_t<T>>;
+template<typename T>
+pixmap(pixmap_span<T> const& other) -> pixmap<std::remove_const_t<T>, std::allocator<std::remove_const_t<T>>>;
+
+template<typename T, typename Allocator>
+pixmap(pixmap_span<T> const& other, Allocator allocator) -> pixmap<std::remove_const_t<T>, Allocator>;
 
 }} // namespace hi::v1
 

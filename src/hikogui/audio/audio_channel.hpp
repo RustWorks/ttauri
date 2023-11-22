@@ -4,11 +4,16 @@
 
 #pragma once
 
+#include "../macros.hpp"
 #include "audio_direction.hpp"
+#include <cstddef>
+#include <string>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.audio.audio_channel);
 
-class audio_channel {
+hi_export namespace hi { inline namespace v1 {
+
+hi_export class audio_channel {
 public:
     /** If the channel is enabled by the user.
      *
@@ -53,4 +58,4 @@ public:
     [[nodiscard]] float rms(std::size_t num_samples) noexcept;
 };
 
-} // namespace hi::inline v1
+}} // namespace hi::inline v1

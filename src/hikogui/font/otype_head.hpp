@@ -5,13 +5,16 @@
 #pragma once
 
 #include "otype_utilities.hpp"
-#include "../utility/module.hpp"
+#include "../utility/utility.hpp"
+#include "../macros.hpp"
 #include <span>
 #include <cstddef>
 
-namespace hi { inline namespace v1 {
+hi_export_module(hikogui.font.otype_head);
 
-[[nodiscard]] inline auto otype_head_parse(std::span<std::byte const> bytes)
+hi_export namespace hi { inline namespace v1 {
+
+[[nodiscard]] hi_inline auto otype_head_parse(std::span<std::byte const> bytes)
 {
     struct header_type {
         big_uint16_buf_t major_version;

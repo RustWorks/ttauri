@@ -8,15 +8,22 @@
 
 #pragma once
 
-#include "../label.hpp"
-#include "../observer.hpp"
+#include "../observer/observer.hpp"
+#include "../utility/utility.hpp"
+#include "../concurrency/concurrency.hpp"
+#include "../dispatch/dispatch.hpp"
+#include "../GUI/GUI.hpp"
+#include "../macros.hpp"
+#include "../l10n/l10n.hpp"
+#include "../macros.hpp"
 #include <string>
 #include <string_view>
 #include <optional>
 #include <concepts>
 
-namespace hi { inline namespace v1 {
-class text_field_widget;
+hi_export_module(hikogui.widgets.text_field_delegate);
+
+hi_export namespace hi { inline namespace v1 {
 
 /** A delegate that controls the state of a text_field_widget.
  *
@@ -24,13 +31,11 @@ class text_field_widget;
  */
 class text_field_delegate {
 public:
-    using notifier_type = notifier<>;
-    using callback_token = notifier_type::callback_token;
-    using callback_proto = notifier_type::callback_proto;
+    using notifier_type = notifier<void()>;
 
     virtual ~text_field_delegate() = default;
-    virtual void init(text_field_widget const& sender) noexcept {}
-    virtual void deinit(text_field_widget const& sender) noexcept {}
+    virtual void init(widget_intf const& sender) noexcept {}
+    virtual void deinit(widget_intf const& sender) noexcept {}
 
     /** Validate the text field.
      *
@@ -38,7 +43,7 @@ public:
      * @param text The text entered by the user into the text field.
      * @return no-value when valid, or a label to display to the user when invalid.
      */
-    virtual label validate(text_field_widget& sender, std::string_view text) noexcept
+    virtual label validate(widget_intf const& sender, gstring const& text) noexcept
     {
         return {};
     }
@@ -50,7 +55,7 @@ public:
      * @param sender The widget that called this function.
      * @return The text to show in the text field.
      */
-    virtual std::string text(text_field_widget& sender) noexcept
+    virtual gstring text(widget_intf const& sender) noexcept
     {
         return {};
     }
@@ -65,12 +70,12 @@ public:
      * @param sender The widget that called this function.
      * @param text The text entered by the user.
      */
-    virtual void set_text(text_field_widget& sender, std::string_view text) noexcept {}
+    virtual void set_text(widget_intf const& sender, gstring const& text) noexcept {}
 
-    callback_token
-    subscribe(forward_of<callback_proto> auto&& callback, callback_flags flags = callback_flags::synchronous) noexcept
+    template<forward_of<void()> Func>
+    callback<void()> subscribe(Func&& func, callback_flags flags = callback_flags::synchronous) noexcept
     {
-        return _notifier.subscribe(hi_forward(callback), flags);
+        return _notifier.subscribe(std::forward<Func>(func), flags);
     }
 
 protected:
@@ -106,26 +111,26 @@ public:
         });
     }
 
-    std::optional<label> validate(text_field_widget& sender, std::string_view text) noexcept override
+    label validate(widget_intf const& sender, gstring const& text) noexcept override
     {
         try {
-            [[maybe_unused]] auto dummy = from_string<value_type>(text, 10);
+            [[maybe_unused]] auto dummy = from_string<value_type>(to_string(text), 10);
         } catch (parse_error const&) {
-            return {tr{"Invalid integer"}};
+            return {txt("Invalid integer")};
         }
 
         return {};
     }
 
-    std::string text(text_field_widget& sender) noexcept override
+    gstring text(widget_intf const& sender) noexcept override
     {
-        return to_string(*value);
+        return to_gstring(to_string(*value));
     }
 
-    void set_text(text_field_widget& sender, std::string_view text) noexcept override
+    void set_text(widget_intf const& sender, gstring const& text) noexcept override
     {
         try {
-            value = from_string<value_type>(text, 10);
+            value = from_string<value_type>(to_string(text), 10);
         } catch (std::exception const&) {
             // Ignore the error, don't modify the value.
             return;
@@ -133,7 +138,7 @@ public:
     }
 
 private:
-    typename decltype(value)::callback_token _value_cbt;
+    callback<void(value_type)> _value_cbt;
 };
 
 /** A default text delegate specialization for `std::floating_point<T>`.
@@ -157,26 +162,26 @@ public:
         });
     }
 
-    label validate(text_field_widget& sender, std::string_view text) noexcept override
+    label validate(widget_intf const& sender, gstring const& text) noexcept override
     {
         try {
-            [[maybe_unused]] auto dummy = from_string<value_type>(text);
+            [[maybe_unused]] auto dummy = from_string<value_type>(to_string(text));
         } catch (parse_error const&) {
-            return {elusive_icon::WarningSign, tr{"Invalid floating point number"}};
+            return {elusive_icon::WarningSign, txt("Invalid floating point number")};
         }
 
         return {};
     }
 
-    std::string text(text_field_widget& sender) noexcept override
+    gstring text(widget_intf const& sender) noexcept override
     {
-        return to_string(*value);
+        return to_gstring(to_string(*value));
     }
 
-    void set_text(text_field_widget& sender, std::string_view text) noexcept override
+    void set_text(widget_intf const& sender, gstring const& text) noexcept override
     {
         try {
-            value = from_string<value_type>(text);
+            value = from_string<value_type>(to_string(text));
         } catch (std::exception const&) {
             // Ignore the error, don't modify the value.
             return;
@@ -184,7 +189,7 @@ public:
     }
 
 private:
-    typename decltype(value)::callback_token _value_cbt;
+    callback<void(value_type)> _value_cbt;
 };
 
 /** Create a shared pointer to a default text delegate.
@@ -194,10 +199,8 @@ private:
  * @param value The observer value which is editable by the text field widget.
  * @return shared pointer to a text field delegate
  */
-[[nodiscard]] std::shared_ptr<text_field_delegate> make_default_text_field_delegate(auto&& value) noexcept requires requires
-{
-    default_text_field_delegate<observer_decay_t<decltype(value)>>{hi_forward(value)};
-}
+[[nodiscard]] std::shared_ptr<text_field_delegate> make_default_text_field_delegate(auto&& value) noexcept
+    requires requires { default_text_field_delegate<observer_decay_t<decltype(value)>>{hi_forward(value)}; }
 {
     using value_type = observer_decay_t<decltype(value)>;
     return std::make_shared<default_text_field_delegate<value_type>>(hi_forward(value));

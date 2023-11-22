@@ -4,21 +4,24 @@
 
 #pragma once
 
-#include "../bigint.hpp"
 #include "audio_device_delegate.hpp"
 #include "audio_stream_config.hpp"
 #include "audio_channel.hpp"
 #include "audio_direction.hpp"
 #include "audio_device_state.hpp"
 #include "speaker_mapping.hpp"
-#include "../label.hpp"
-#include "../utility/module.hpp"
-#include "../loop.hpp"
+#include "../numeric/numeric.hpp"
+#include "../l10n/l10n.hpp"
+#include "../utility/utility.hpp"
+#include "../dispatch/dispatch.hpp"
+#include "../macros.hpp"
 #include <string>
 #include <memory>
 #include <ostream>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.audio.audio_device);
+
+hi_export namespace hi { inline namespace v1 {
 
 /** A set of audio channels which can be rendered and/or captures at the same time.
  * On win32 this would be Audio Endpoint gfx_device, which can either render or capture
@@ -28,7 +31,7 @@ namespace hi::inline v1 {
  * aggregate device that can run in the same clock domain, with both render and
  * capture at the same time.
  */
-class audio_device {
+hi_export class audio_device {
 public:
     audio_device() noexcept = default;
     virtual ~audio_device() = default;
@@ -164,4 +167,4 @@ protected:
     std::string _name;
 };
 
-} // namespace hi::inline v1
+}} // namespace hi::inline v1

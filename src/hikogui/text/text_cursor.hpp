@@ -4,13 +4,17 @@
 
 #pragma once
 
-#include "../utility/module.hpp"
-#include "../unicode/unicode_description.hpp"
+#include "../utility/utility.hpp"
+#include "../unicode/unicode.hpp"
+#include "../macros.hpp"
 #include <tuple>
 #include <cstdlib>
 #include <algorithm>
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.text.text_cursor);
+
+
+hi_export namespace hi::inline v1 {
 
 /** A cursor-position in text.
  *

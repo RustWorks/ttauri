@@ -5,8 +5,11 @@
 #pragma once
 
 #include "skeleton_node.hpp"
+#include "../macros.hpp"
 
-namespace hi::inline v1 {
+hi_export_module(hikogui.skeleton : if_node);
+
+hi_export namespace hi::inline v1 {
 
 struct skeleton_if_node final : skeleton_node {
     std::vector<statement_vector> children_groups;

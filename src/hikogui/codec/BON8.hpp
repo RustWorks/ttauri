@@ -4,18 +4,21 @@
 
 #pragma once
 
-#include "../byte_string.hpp"
-#include "../utility/module.hpp"
-#include "../datum.hpp"
+#include "../container/container.hpp"
+#include "../utility/utility.hpp"
+#include "datum.hpp"
+#include "../macros.hpp"
 #include <cstddef>
 #include <string>
+
+hi_export_module(hikogui.codec.BON8);
 
 hi_warning_push();
 // C26429: Symbol '' is never tested for nullness, it can be marked as not_null (f.23)
 // False positive reported: https://developercommunity.visualstudio.com/t/C26429-false-positive-on-reference-to-po/10262151
 hi_warning_ignore_msvc(26429);
 
-namespace hi::inline v1 {
+hi_export namespace hi::inline v1 {
 namespace detail {
 constexpr auto BON8_code_array_count0 = uint8_t{0x80};
 constexpr auto BON8_code_array_count1 = uint8_t{0x81};
@@ -421,7 +424,7 @@ public:
     }
 };
 
-void BON8_encoder::add(datum const& value)
+void hi_inline BON8_encoder::add(datum const& value)
 {
     if (auto s = get_if<std::string>(value)) {
         add(*s);
@@ -450,7 +453,7 @@ void BON8_encoder::add(datum const& value)
  * @return When positive: the number of bytes in the UTF-8 character.
  *         When negative: the number of bytes in the integer.
  */
-[[nodiscard]] int BON8_multibyte_count(cbyteptr ptr, cbyteptr last)
+[[nodiscard]] hi_inline int BON8_multibyte_count(cbyteptr ptr, cbyteptr last)
 {
     hi_assert_not_null(ptr);
     hi_assert_not_null(last);
@@ -472,7 +475,7 @@ void BON8_encoder::add(datum const& value)
  * @param count The number of bytes used to encode the integer.
  * @return The integer as a datum.
  */
-[[nodiscard]] datum decode_BON8_int(cbyteptr& ptr, cbyteptr last, int count)
+[[nodiscard]] hi_inline datum decode_BON8_int(cbyteptr& ptr, cbyteptr last, int count)
 {
     hi_assert_not_null(ptr);
     hi_assert_not_null(last);
@@ -495,7 +498,7 @@ void BON8_encoder::add(datum const& value)
     }
 }
 
-[[nodiscard]] datum decode_BON8_float(cbyteptr& ptr, cbyteptr last, int count)
+[[nodiscard]] hi_inline datum decode_BON8_float(cbyteptr& ptr, cbyteptr last, int count)
 {
     hi_assert_not_null(ptr);
     hi_assert_not_null(last);
@@ -521,7 +524,7 @@ void BON8_encoder::add(datum const& value)
     }
 }
 
-[[nodiscard]] datum decode_BON8_array(cbyteptr& ptr, cbyteptr last)
+[[nodiscard]] hi_inline datum decode_BON8_array(cbyteptr& ptr, cbyteptr last)
 {
     hi_assert_not_null(ptr);
     hi_assert_not_null(last);
@@ -541,7 +544,7 @@ void BON8_encoder::add(datum const& value)
     throw parse_error("Incomplete array at end of buffer");
 }
 
-[[nodiscard]] datum decode_BON8_array(cbyteptr& ptr, cbyteptr last, std::size_t count)
+[[nodiscard]] hi_inline datum decode_BON8_array(cbyteptr& ptr, cbyteptr last, std::size_t count)
 {
     auto r = datum::make_vector();
     auto& vector = get<datum::vector_type>(r);
@@ -552,7 +555,7 @@ void BON8_encoder::add(datum const& value)
     return r;
 }
 
-[[nodiscard]] datum decode_BON8_object(cbyteptr& ptr, cbyteptr last)
+[[nodiscard]] hi_inline datum decode_BON8_object(cbyteptr& ptr, cbyteptr last)
 {
     hi_assert_not_null(ptr);
     hi_assert_not_null(last);
@@ -576,7 +579,7 @@ void BON8_encoder::add(datum const& value)
     throw parse_error("Incomplete object at end of buffer");
 }
 
-[[nodiscard]] datum decode_BON8_object(cbyteptr& ptr, cbyteptr last, std::size_t count)
+[[nodiscard]] hi_inline datum decode_BON8_object(cbyteptr& ptr, cbyteptr last, std::size_t count)
 {
     auto r = datum::make_map();
     auto& map = get<datum::map_type>(r);
@@ -591,7 +594,7 @@ void BON8_encoder::add(datum const& value)
     return r;
 }
 
-[[nodiscard]] long long decode_BON8_UTF8_like_int(cbyteptr& ptr, cbyteptr last, int count) noexcept
+[[nodiscard]] hi_inline long long decode_BON8_UTF8_like_int(cbyteptr& ptr, cbyteptr last, int count) noexcept
 {
     hi_assert_not_null(ptr);
     hi_assert_not_null(last);
@@ -658,7 +661,7 @@ void BON8_encoder::add(datum const& value)
     }
 }
 
-[[nodiscard]] datum decode_BON8(cbyteptr& ptr, cbyteptr last)
+[[nodiscard]] hi_inline datum decode_BON8(cbyteptr& ptr, cbyteptr last)
 {
     hi_assert_not_null(ptr);
     hi_assert_not_null(last);
@@ -768,13 +771,14 @@ void BON8_encoder::add(datum const& value)
     }
     throw parse_error("Unexpected end-of-buffer");
 }
+
 } // namespace detail
 
 /** Decode BON8 message from buffer.
  * @param buffer A buffer to a BON8 encoded message.
  * @return The decoded message.
  */
-[[nodiscard]] datum decode_BON8(std::span<const std::byte> buffer)
+hi_export [[nodiscard]] hi_inline datum decode_BON8(std::span<const std::byte> buffer)
 {
     auto *ptr = buffer.data();
     auto *last = ptr + buffer.size();
@@ -785,7 +789,7 @@ void BON8_encoder::add(datum const& value)
  * @param buffer A buffer to a BON8 encoded message.
  * @return The decoded message.
  */
-[[nodiscard]] datum decode_BON8(bstring const& buffer)
+hi_export [[nodiscard]] hi_inline datum decode_BON8(bstring const& buffer)
 {
     auto *ptr = buffer.data();
     auto *last = ptr + buffer.size();
@@ -796,7 +800,7 @@ void BON8_encoder::add(datum const& value)
  * @param buffer A buffer to a BON8 encoded message.
  * @return The decoded message.
  */
-[[nodiscard]] datum decode_BON8(bstring_view buffer)
+hi_export [[nodiscard]] hi_inline datum decode_BON8(bstring_view buffer)
 {
     auto *ptr = buffer.data();
     auto *last = ptr + buffer.size();
@@ -807,7 +811,7 @@ void BON8_encoder::add(datum const& value)
  * @param value The data to encode
  * @return The encoded message as a byte_string.
  */
-[[nodiscard]] bstring encode_BON8(datum const& value)
+hi_export [[nodiscard]] hi_inline bstring encode_BON8(datum const& value)
 {
     auto encoder = detail::BON8_encoder{};
     encoder.add(value);

@@ -4,7 +4,13 @@
 
 #pragma once
 
-namespace hi::inline v1 {
+#include "../macros.hpp"
+#include <algorithm>
+#include <cmath>
+
+hi_export_module(hikogui.font.font_metrics);
+
+hi_export namespace hi::inline v1 {
 
 /** The metrics of a font.
  *
@@ -12,7 +18,7 @@ namespace hi::inline v1 {
  * Inside the font these are in 'em' units, outside the font they
  * may have been scaled to 'points' or 'dp'.
  */
-struct font_metrics {
+hi_export struct font_metrics {
     /** Distance from baseline of highest ascender.
      */
     float ascender = 0.0f;

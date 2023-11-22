@@ -2,28 +2,30 @@
 // Distributed under the Boost Software License, Version 1.0.
 // (See accompanying file LICENSE_1_0.txt or copy at https://www.boost.org/LICENSE_1_0.txt)
 
-#include "hikogui/module.hpp"
-#include "hikogui/GUI/gui_system.hpp"
-#include "hikogui/widgets/toggle_widget.hpp"
+#include "hikogui/hikogui.hpp"
 #include "hikogui/crt.hpp"
-#include "hikogui/loop.hpp"
 
 using namespace hi;
 
 int hi_main(int argc, char *argv[])
 {
-    auto gui = gui_system::make_unique();
-    auto window = gui->make_window(tr("Toggle example"));
-    window->content().make_widget<label_widget>("A1", tr("toggle:"));
+    set_application_name("Toggle example");
+    set_application_vendor("HikoGUI");
+    set_application_version({1, 0, 0});
+
+    auto widget = std::make_unique<window_widget>(txt("Toggle example"));
+    widget->content().emplace<label_widget>("A1", txt("toggle:"));
 
     /// [Create a toggle]
     observer<int> value = 0;
 
-    auto& tb = window->content().make_widget<toggle_widget>("B1", value, 1, 2);
-    tb.on_label = tr("on");
-    tb.off_label = tr("off");
-    tb.other_label = tr("other");
+    auto& tb = widget->content().emplace<toggle_with_label_widget>("B1", value, 1, 2);
+    tb.attributes.on_label = txt("on");
+    tb.attributes.off_label = txt("off");
+    tb.attributes.other_label = txt("other");
     /// [Create a toggle]
+
+    auto window = std::make_unique<gui_window>(std::move(widget));
 
     auto close_cb = window->closing.subscribe(
         [&] {
